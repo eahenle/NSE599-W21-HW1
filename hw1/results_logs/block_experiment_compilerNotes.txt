@@ -1,0 +1,166 @@
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=1 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=1 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=1 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=1 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=1
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=2 benchmark.c
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=3 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=2 dgemm-naive.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=3 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=2 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=3 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=2
+**********
+-D BLOCK_SIZE=3
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=5 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=4 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=5 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=4 dgemm-blocked.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=5 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=4 dgemm-blas.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=5 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=5
+**********
+-D BLOCK_SIZE=4
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=9 benchmark.c
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=8 benchmark.c
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=6 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=7 benchmark.c
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=9 dgemm-naive.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=10 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=8 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=9 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=10 dgemm-blas.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=9 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=9
+**********
+-D BLOCK_SIZE=10
+**********
+-D BLOCK_SIZE=8
+**********
+-D BLOCK_SIZE=7
+**********
+-D BLOCK_SIZE=6
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=1 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=1 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=1 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=1 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=1
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=2 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=2 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=2 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=2 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=2
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=3 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=3 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=3 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=3 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=3
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=6 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=4 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=6 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=6 dgemm-blocked.c
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=4 dgemm-blocked.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=5 benchmark.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=5 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=5 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=5 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=5
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=7 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=7 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=7 dgemm-blocked.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=8 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=7 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=8
+**********
+-D BLOCK_SIZE=7
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=9 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=9 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=9 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=9 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=9
+rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=10 benchmark.c
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=10 dgemm-naive.c
+cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=10 dgemm-blocked.c
+cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=10 dgemm-blas.c
+cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
+**********
+-D BLOCK_SIZE=10
