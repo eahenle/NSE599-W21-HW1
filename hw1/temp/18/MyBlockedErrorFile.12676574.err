@@ -1,0 +1,3 @@
+cc: error: fira-region=mixed: No such file or directory
+make: *** [benchmark.o] Error 1
+/var/slurmd/job12676574/slurm_script: line 10: ./benchmark-blocked: No such file or directory

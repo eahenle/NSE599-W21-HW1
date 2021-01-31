@@ -11,7 +11,7 @@ then
 fi
 WORKING_DIR=$(pwd)
 
-for i in {1..42}
+for i in {15..30}
 do
   echo "BLOCK_SIZE = $i" 
   if [ ! -d ./temp/$i ];

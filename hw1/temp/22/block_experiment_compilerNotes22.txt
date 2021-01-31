@@ -1,8 +1,8 @@
 rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
-cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=22 benchmark.c
-cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=22 dgemm-naive.c
+cc  -c -Ofast -Wall -std=gnu99 -funroll-loops  -O3 -D BLOCK_SIZE=22 benchmark.c
+cc  -c -Ofast -Wall -std=gnu99 -funroll-loops  -O3 -D BLOCK_SIZE=22 dgemm-naive.c
 cc  -o benchmark-naive benchmark.o dgemm-naive.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
-cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=22 dgemm-blocked.c
+cc  -c -Ofast -Wall -std=gnu99 -funroll-loops  -O3 -D BLOCK_SIZE=22 dgemm-blocked.c
 cc  -o benchmark-blocked benchmark.o dgemm-blocked.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
-cc  -c -Wall -std=gnu99 -O3 -D BLOCK_SIZE=22 dgemm-blas.c
+cc  -c -Ofast -Wall -std=gnu99 -funroll-loops  -O3 -D BLOCK_SIZE=22 dgemm-blas.c
 cc  -o benchmark-blas benchmark.o dgemm-blas.o -lrt  -I/opt/intel/composer_xe_2013.1.117/mkl/include -Wl,-L/opt/intel/composer_xe_2013.1.117/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl
