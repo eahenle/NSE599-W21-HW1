@@ -153,8 +153,9 @@ int main (int argc, char **argv)
 
     /* If any element in C is positive, then something went wrong in square_dgemm */
     for (int i = 0; i < n * n; ++i)
-      if (C[i] > 0)
-	die("*** FAILURE *** Error in matrix multiply exceeds componentwise error bounds.\n" );
+      if (C[i] > 0){
+	printf("Error measured for size %d = %f", n, C[i])
+	die("*** FAILURE *** Error in matrix multiply exceeds componentwise error bounds.\n" );}
   }
 
   /* Calculating average percentage of peak reached by algorithm */
