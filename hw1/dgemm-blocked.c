@@ -5,7 +5,7 @@ COMPILER = gnu
 
 Compiler flags:
 
-BSIZE = 100 # to set block size
+BSIZE = 64 # to set block size
 CC = cc
 OPT = -O3 -unroll-loops -mavx2
 CFLAGS = -Wall -std=gnu99 $(OPT) -D BLOCK_SIZE=$(BSIZE)
