@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -A cc3uv3p # 2018 XSEDE Applications of Parallel Computing Course Allocation
+#SBATCH -A sc5fp4p
 #SBATCH -J auto-particle-mpi16
 #SBATCH -o auto-particle-mpi16.stdout
 #SBATCH -p RM

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -A cc3uv3p # 2017 XSEDE Applications of Parallel Computing Course Allocation
+#SBATCH -A sc5fp4p # 2017 XSEDE Applications of Parallel Computing Course Allocation
 #SBATCH -J auto-particle-serial
 #SBATCH -o auto-particle-serial.stdout
 #SBATCH -n 1         
