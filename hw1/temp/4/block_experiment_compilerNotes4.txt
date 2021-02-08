@@ -1,2 +1,0 @@
-rm -f benchmark-naive benchmark-blocked benchmark-blas benchmark.o dgemm-naive.o dgemm-blocked.o dgemm-blas.o *.stdout
-cc  -c -Wall -std=gnu99 -Ofast -funroll-loops fira-region=mixed -D BLOCK_SIZE=4 benchmark.c

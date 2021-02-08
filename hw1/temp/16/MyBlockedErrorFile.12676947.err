@@ -1,3 +1,0 @@
-cc: error: unrecognized command line option ‘-fdevirtualize-at-ltrans’
-make: *** [benchmark.o] Error 1
-/var/slurmd/job12676947/slurm_script: line 10: ./benchmark-blocked: No such file or directory

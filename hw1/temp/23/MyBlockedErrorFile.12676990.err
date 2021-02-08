@@ -1,3 +1,0 @@
-cc: error: unrecognized command line option ‘-fdeclone-ctor-dtor’
-make: *** [benchmark.o] Error 1
-/var/slurmd/job12676990/slurm_script: line 10: ./benchmark-blocked: No such file or directory

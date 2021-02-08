@@ -1,3 +1,0 @@
-gcc: error: unrecognized command line option ‘-flive-range-shrinkage’
-make: *** [benchmark.o] Error 1
-/var/slurmd/job12676893/slurm_script: line 10: ./benchmark-blocked: No such file or directory
