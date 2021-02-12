@@ -45,10 +45,11 @@ int main(int argc, char **argv)
         for(int i = 0; i < n; i++)
         {
             particles[i].ax = particles[i].ay = 0;
-            for (int j = 0; j < n; j++)
-                {
-                    apply_force(particles[i], particles[j], &dmin, &davg, &navg);
-                }
+            for (int j = 0; i + 1 < n; j++)
+            {
+                apply_force(particles[i], particles[j], &dmin, &davg, &navg);
+                apply_force(particles[j], particles[i], &dmin, &davg, &navg);
+            }
         }
 
         //  move particles
