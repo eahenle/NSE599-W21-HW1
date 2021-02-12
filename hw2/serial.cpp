@@ -21,10 +21,10 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    FIND_OPTION_NO = false
+    bool FIND_OPTION_NO = false;
     if(find_option(argc, argv, "-no") == -1)
     {
-        FIND_OPTION_NO = true
+        FIND_OPTION_NO = true;
     }
 
     int n = read_int(argc, argv, "-n", 1000);
