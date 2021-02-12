@@ -1,4 +1,5 @@
 #!/bin/bash
+#SBATCH -A see180004p # 2021 Allocation -- This might change in the following years.
 #SBATCH -J particle-pthreads16
 #SBATCH -o particle-pthreads16.stdout
 #SBATCH -n 16         
