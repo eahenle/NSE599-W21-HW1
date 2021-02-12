@@ -21,6 +21,12 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    FIND_OPTION_NO = false
+    if(find_option(argc, argv, "-no") == -1)
+    {
+        FIND_OPTION_NO = true
+    }
+
     int n = read_int(argc, argv, "-n", 1000);
 
     char *savename = read_string(argc, argv, "-o", NULL);
@@ -63,18 +69,18 @@ int main(int argc, char **argv)
             // Computing statistical data
             if(navg)
             {
-            absavg += davg / navg;
-            nabsavg++;
+                absavg += davg / navg;
+                nabsavg++;
             }
             if(dmin < absmin)
             {
-              absmin = dmin;
+                absmin = dmin;
             }
 
             //  save if necessary
             if(fsave && (step % SAVEFREQ) == 0)
             {
-              save(fsave, n, particles);
+                save(fsave, n, particles);
             }
         }
     }
@@ -82,7 +88,7 @@ int main(int argc, char **argv)
 
     printf("n = %d, simulation time = %g seconds", n, simulation_time);
 
-    if(find_option(argc, argv, "-no") == -1)
+    if(FIND_OPTION_NO)
     {
         if(nabsavg)
         {
@@ -93,7 +99,7 @@ int main(int argc, char **argv)
         //  -A Correct simulation will have particles stay at greater than 0.4 (of cutoff) with typical values between .7-.8
         //  -A simulation were particles don't interact correctly will be less than 0.4 (of cutoff) with typical values between .01-.05
         //  -The average distance absavg is ~.95 when most particles are interacting correctly and ~.66 when no particles are interacting
-        printf( ", absmin = %lf, absavg = %lf", absmin, absavg);
+        printf(", absmin = %lf, absavg = %lf", absmin, absavg);
         if(absmin < 0.4)
         {
             printf("\nThe minimum distance is below 0.4 meaning that some particle is not interacting");
@@ -108,7 +114,7 @@ int main(int argc, char **argv)
     // Printing summary data
     if(fsum)
     {
-        fprintf(fsum,"%d %g\n", n, simulation_time);
+        fprintf(fsum, "%d %g\n", n, simulation_time);
     }
 
     // Clearing space

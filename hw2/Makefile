@@ -10,7 +10,7 @@ SHELL='bash'
 CC = g++
 MPCC = mpic++
 OPENMP = -fopenmp
-CFLAGS = -O3
+CFLAGS = -O3 -funroll-loops
 LIBS =
 
 
