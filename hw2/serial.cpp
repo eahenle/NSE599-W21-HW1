@@ -21,10 +21,18 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    bool FIND_OPTION_NO = false;
+    bool FIND_OPTION_NO = true;
     if(find_option(argc, argv, "-no") == -1)
     {
-        FIND_OPTION_NO = true;
+        FIND_OPTION_NO = false;
+    }
+
+    printf("-no flag: ");
+    if(FIND_OPTION_NO)
+    {
+        printf("true\n");
+    }else{
+        printf("false\n");
     }
 
     int n = read_int(argc, argv, "-n", 1000);
@@ -42,17 +50,21 @@ int main(int argc, char **argv)
     //  simulate a number of time steps
     double simulation_time = read_timer();
 
+    printf("\nBeginning simulation on %d particles\n", n);
+
     for(int step = 0; step < NSTEPS; step++)
     {
         navg = 0;
         davg = 0.0;
         dmin = 1.0;
         //  compute forces
+        printf("Computing forces for step %d\n", step);
         for(int i = 0; i < n; i++)
         {
             particles[i].ax = particles[i].ay = 0;
-            for (int j = 0; i + 1 < n; j++)
+            for (int j = i + 1; j < n; j++)
             {
+                //printf("Applying forces between particles %d & %d\n", i, j);
                 apply_force(particles[i], particles[j], &dmin, &davg, &navg);
                 apply_force(particles[j], particles[i], &dmin, &davg, &navg);
             }
