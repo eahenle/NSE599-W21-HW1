@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH -A see180004p # 2021 Allocation -- This might change in the following years.
+#SBATCH -J particle-mpi16
+#SBATCH -o particle-mpi16.stdout
+#SBATCH -N 16
+#SBATCH -n 16         
+#SBATCH -p RM
+#SBATCH -t 00:10:00     
+
+source modules.sh
+
+mpirun -n 16 ./mpi -n 1000 -o mpi.txt
