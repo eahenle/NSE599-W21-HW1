@@ -1,11 +1,13 @@
 #!/bin/bash
-#SBATCH -A sc5fp4p
+#SBATCH -A see180004p # 2021 Allocation -- This might change in the following years.
 #SBATCH -J auto-particle-mpi16
 #SBATCH -o auto-particle-mpi16.stdout
 #SBATCH -p RM
-#SBATCH -t 00:16:00
+#SBATCH -t 00:16:00     
 #SBATCH -N 1
 #SBATCH -n 16
+
+source modules.sh
 
 rm mpi_sum.txt
 mpirun -n 1 ./serial -n 500 -no -s mpi_sum.txt
