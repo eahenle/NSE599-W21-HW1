@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <math.h>
+#include <vector>
 #include "common.h"
 #include "omp.h"
 
@@ -32,6 +33,12 @@ int main(int argc, char **argv)
     set_size(n);
     init_particles(n, particles);
 
+    // bins is a vector of particle vectors
+    // simulation space is a square grid of bins
+    const int nb_bins_per_row = ceil(sqrt(density * n) / cutoff);
+    const int nb_bins = nb_bins_per_row * nb_bins_per_row;
+    std::vector<particle_t*> *bins = new std::vector<particle_t*>[nb_bins];
+
     //  simulate a number of time steps
     double simulation_time = read_timer();
     #pragma omp parallel private(dmin)
@@ -43,15 +50,38 @@ int main(int argc, char **argv)
             davg = 0.0;
             dmin = 1.0;
 
+            // bin particles
+            #pragma omp for
+            for (int i = 0; i < n; i++)
+            {
+                bins[int(floor(particles[i].x / cutoff) + nb_bins_per_row * floor(particles[i].y / cutoff))].push_back(&particles[i]);
+            }
+
             //  compute all forces
             #pragma omp for reduction(+:navg) reduction(+:davg)
-            for(int i = 0; i < n; i++)
+            for(int p = 0; p < n; p++)
             {
-                particles[i].ax = particles[i].ay = 0;
-                for (int j = 0; j < n; j++)
+                particles[p].ax = particles[p].ay = 0;
+
+                // apply nearby forces (only particles in same or adjacent bins can interact)
+                int particle_bin = floor(particles[p].x / cutoff) + nb_bins_per_row * floor(particles[p].y / cutoff);
+                for (int i = particle_bin % nb_bins_per_row == 0 ? 0 : -1; i <= (particle_bin % nb_bins_per_row == nb_bins_per_row - 1 ? 0 : 1); i++)
                 {
-                    apply_force(particles[i], particles[j], &dmin, &davg, &navg);
+                    for (int j = particle_bin < nb_bins_per_row ? 0 : -1; j <= (particle_bin >= nb_bins_per_row * (nb_bins_per_row - 1) ? 0 : 1); j++)
+                    {
+                        int bin_index = particle_bin + i + nb_bins_per_row * j;
+                        for (int k = 0; k < bins[bin_index].size(); k++)
+                        {
+                            apply_force(particles[p], *bins[bin_index][k], &dmin, &davg, &navg);
+                        }
+                    }
                 }
+            }
+
+            // clear bins for next iteration
+            for (int i = 0; i < nb_bins; i++)
+            {
+                bins[i].clear();
             }
 
             //  move particles
