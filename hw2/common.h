@@ -1,6 +1,15 @@
 #ifndef __CS267_COMMON_H__
 #define __CS267_COMMON_H__
 
+//
+//  tuned constants
+//
+#define density 0.0005
+#define mass    0.01
+#define cutoff  0.01
+#define min_r   (cutoff/100)
+#define dt      0.0005
+
 inline int min(int a, int b)
 {
     return a < b ? a : b;
@@ -18,12 +27,12 @@ const int SAVEFREQ = 10;
 // particle data structure
 typedef struct
 {
-  double x;
-  double y;
-  double vx;
-  double vy;
-  double ax;
-  double ay;
+    double x;
+    double y;
+    double vx;
+    double vy;
+    double ax;
+    double ay;
 } particle_t;
 
 //
