@@ -79,6 +79,7 @@ int main(int argc, char **argv)
             }
 
             // clear bins for next iteration
+            #pragma omp for
             for (int i = 0; i < nb_bins; i++)
             {
                 bins[i].clear();
