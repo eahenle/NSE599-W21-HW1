@@ -11,59 +11,45 @@
 #include <math.h>
 #include "common.h"
 
-#define density 0.0005
-#define mass    0.01
-#define cutoff  0.01
-#define min_r   (cutoff/100)
-#define dt      0.0005
-
-#define find_particle_offset(target)          ((size_t)& (((my_particle_index*)0)->particle.target))
-#define for_bin(i, j)     for(int i = max(0, j - 1); i <= min(n_bins_side - 1, j + 1); ++i)
+#define find_particle_offset(target)    ((size_t)& (((my_particle_index*)0)->p.target))
+#define for_bin(i, j)    for(int i = max(0, j - 1); i <= min(n_bins_side - 1, j + 1); ++i)
 
 int n_bins_side, n_bins, n_proc, rank, n, n_rows_proc;
-double size2;
+double mpi_size;
 
 MPI_Datatype PARTICLE;
-
-//original particle type
-class my_particle_t{
-public:
-      double x, y, vx, vy, ax, ay;
-};
 
 //wrap the paritcles with index, providing helper function for mpi
 class my_particle_index{
 public:
-    my_particle_t particle;
+    particle_t p;
     int index;
     int bin_idx;
 
     void move()
     {
-        //  slightly simplified Velocity Verlet integration
-        //  conserves energy better than explicit Euler method
-        this->particle.vx += this->particle.ax * dt;
-        this->particle.vy += this->particle.ay * dt;
-        this->particle.x  += this->particle.vx * dt;
-        this->particle.y  += this->particle.vy * dt;
+        this->p.vx += this->p.ax * dt;
+        this->p.vy += this->p.ay * dt;
+        this->p.x  += this->p.vx * dt;
+        this->p.y  += this->p.vy * dt;
 
         //  bounce from walls
-        while(this->particle.x < 0 || this->particle.x > size2 )
+        while(this->p.x < 0 || this->p.x > mpi_size)
         {
-            this->particle.x  = this->particle.x < 0 ? -this->particle.x : 2 * size2- this->particle.x;
-            this->particle.vx = -this->particle.vx;
+            this->p.x  = this->p.x < 0 ? -this->p.x : 2 * mpi_size- this->p.x;
+            this->p.vx = -this->p.vx;
         }
-        while( this->particle.y < 0 || this->particle.y > size2 )
+        while(this->p.y < 0 || this->p.y > mpi_size)
         {
-            this->particle.y  = this->particle.y < 0 ? -this->particle.y : 2*size2-this->particle.y;
-            this->particle.vy = -this->particle.vy;
+            this->p.y  = this->p.y < 0 ? -this->p.y : 2*mpi_size-this->p.y;
+            this->p.vy = -this->p.vy;
         }
     }
 
-    void apply_force(my_particle_t &neighbor , double *dmin, double *davg, int *navg)
+    void apply_force(particle_t &neighbor , double *dmin, double *davg, int *navg)
     {
-        double dx = neighbor.x - this->particle.x;
-        double dy = neighbor.y - this->particle.y;
+        double dx = neighbor.x - this->p.x;
+        double dy = neighbor.y - this->p.y;
         double r2 = dx * dx + dy * dy;
         if(r2 > cutoff*cutoff)
             return;
@@ -79,8 +65,8 @@ public:
 
         //  very simple short-range repulsive force
         double coef = ( 1 - cutoff / r ) / r2 / mass;
-        this->particle.ax += coef * dx;
-        this->particle.ay += coef * dy;
+        this->p.ax += coef * dx;
+        this->p.ay += coef * dy;
     }
 };
 
@@ -129,8 +115,8 @@ public:
         while (it != this->particles.end()) {
             my_particle_index *p = *it;
             p->move();
-            double bin_side_len = size2 / n_bins_side;
-            int row_b = floor(p->particle.x / bin_side_len), col_b = floor(p->particle.y / bin_side_len);
+            double bin_side_len = mpi_size / n_bins_side;
+            int row_b = floor(p->p.x / bin_side_len), col_b = floor(p->p.y / bin_side_len);
             int new_b_idx =  row_b + col_b * n_bins_side;
             if (new_b_idx != b_it) { //if particle is not in the same position
                 p->bin_idx = new_b_idx;
@@ -169,12 +155,12 @@ void init_particles_mpi(int rank, int n, double size, my_particle_index *p) {
         shuffle[j] = shuffle[n-i-1];
 
         //  distribute particles evenly to ensure proper spacing
-        p[i].particle.x = size*(1.+(k%sx))/(1+sx);
-        p[i].particle.y = size*(1.+(k/sx))/(1+sy);
+        p[i].p.x = size*(1.+(k%sx))/(1+sx);
+        p[i].p.y = size*(1.+(k/sx))/(1+sy);
 
         //  assign random velocities within a bound
-        p[i].particle.vx = drand48()*2-1;
-        p[i].particle.vy = drand48()*2-1;
+        p[i].p.vx = drand48()*2-1;
+        p[i].p.vy = drand48()*2-1;
 
         p[i].index = i;
     }
@@ -183,8 +169,8 @@ void init_particles_mpi(int rank, int n, double size, my_particle_index *p) {
 
 //get the bin id for a particle
 int particle_bin(double canvas_side_len, my_particle_index &p) {
-    int bin_row = p.particle.x / (canvas_side_len / n_bins_side);
-    int bin_col = p.particle.y / (canvas_side_len / n_bins_side);
+    int bin_row = p.p.x / (canvas_side_len / n_bins_side);
+    int bin_col = p.p.y / (canvas_side_len / n_bins_side);
     return bin_col * n_bins_side + bin_row;
 }
 
@@ -281,7 +267,7 @@ int main(int argc, char **argv)
     my_particle_index *local_particles = (my_particle_index*) malloc(n * sizeof(my_particle_index));
 
     // Allocate particle simulation coeffiency
-    size2 = sqrt(density * n);
+    mpi_size = sqrt(density * n);
     double size = sqrt(density * n);
 
     n_bins_side = max(1, sqrt(density * n) / (0.01 * 3));
@@ -377,7 +363,7 @@ int main(int argc, char **argv)
 
         // Zero out the accelerations
         for (int i = 0; i < n_local_particles; ++i) {
-            local_particles[i].particle.ax = local_particles[i].particle.ay = 0;
+            local_particles[i].p.ax = local_particles[i].p.ay = 0;
         }
 
         // Compute forces between each local bin and its neighbors
@@ -389,7 +375,7 @@ int main(int argc, char **argv)
                     int b2 = b2_row + b2_col * n_bins_side;
                     for (auto &it1: bins[idx].particles) {
                         for (auto &it2: bins[b2].particles) {
-                             it1->apply_force(it2->particle, &dmin, &davg, &navg);
+                             it1->apply_force(it2->p, &dmin, &davg, &navg);
                         }
                     }
                 }

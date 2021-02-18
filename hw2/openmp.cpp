@@ -65,12 +65,12 @@ int main(int argc, char **argv)
 
                 // apply nearby forces (only particles in same or adjacent bins can interact)
                 int particle_bin = floor(particles[p].x / cutoff) + nb_bins_per_row * floor(particles[p].y / cutoff);
-                for (int i = particle_bin % nb_bins_per_row == 0 ? 0 : -1; i <= (particle_bin % nb_bins_per_row == nb_bins_per_row - 1 ? 0 : 1); i++)
+                for(int i = particle_bin % nb_bins_per_row == 0 ? 0 : -1; i <= (particle_bin % nb_bins_per_row == nb_bins_per_row - 1 ? 0 : 1); i++)
                 {
-                    for (int j = particle_bin < nb_bins_per_row ? 0 : -1; j <= (particle_bin >= nb_bins_per_row * (nb_bins_per_row - 1) ? 0 : 1); j++)
+                    for(int j = particle_bin < nb_bins_per_row ? 0 : -1; j <= (particle_bin >= nb_bins_per_row * (nb_bins_per_row - 1) ? 0 : 1); j++)
                     {
                         int bin_index = particle_bin + i + nb_bins_per_row * j;
-                        for (int k = 0; k < bins[bin_index].size(); k++)
+                        for(int k = 0; k < bins[bin_index].size(); k++)
                         {
                             apply_force(particles[p], *bins[bin_index][k], &dmin, &davg, &navg);
                         }
