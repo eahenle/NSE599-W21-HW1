@@ -11,131 +11,132 @@
 #include <math.h>
 #include "common.h"
 
-#define find_particle_offset(target)    ((size_t)& (((my_particle_index*)0)->p.target))
-#define for_bin(i, j)    for(int i = max(0, j - 1); i <= min(n_bins_side - 1, j + 1); ++i)
-
 int n_bins_side, n_bins, n_proc, rank, n, n_rows_proc;
 double mpi_size;
 
 MPI_Datatype PARTICLE;
 
 //wrap the paritcles with index, providing helper function for mpi
-class my_particle_index{
-public:
-    particle_t p;
-    int idx;
-    int bin;
+class my_particle_index
+{
+    public:
+        particle_t p;
+        int idx;
+        int bin;
 
-    void move()
-    {
-        this->p.vx += this->p.ax * dt;
-        this->p.vy += this->p.ay * dt;
-        this->p.x  += this->p.vx * dt;
-        this->p.y  += this->p.vy * dt;
-
-        //  bounce from walls
-        while(this->p.x < 0 || this->p.x > mpi_size)
+        void move()
         {
-            this->p.x  = this->p.x < 0 ? -this->p.x : 2 * mpi_size- this->p.x;
-            this->p.vx = -this->p.vx;
+            this->p.vx += this->p.ax * dt;
+            this->p.vy += this->p.ay * dt;
+            this->p.x  += this->p.vx * dt;
+            this->p.y  += this->p.vy * dt;
+
+            //  bounce from walls
+            while(this->p.x < 0 || this->p.x > mpi_size)
+            {
+                this->p.x  = this->p.x < 0 ? -this->p.x : 2 * mpi_size- this->p.x;
+                this->p.vx = -this->p.vx;
+            }
+            while(this->p.y < 0 || this->p.y > mpi_size)
+            {
+                this->p.y  = this->p.y < 0 ? -this->p.y : 2*mpi_size-this->p.y;
+                this->p.vy = -this->p.vy;
+            }
         }
-        while(this->p.y < 0 || this->p.y > mpi_size)
+
+        void apply_force(particle_t &neighbor , double *dmin, double *davg, int *navg)
         {
-            this->p.y  = this->p.y < 0 ? -this->p.y : 2*mpi_size-this->p.y;
-            this->p.vy = -this->p.vy;
+            double dx = neighbor.x - this->p.x;
+            double dy = neighbor.y - this->p.y;
+            double r2 = dx * dx + dy * dy;
+            if(r2 > cutoff*cutoff)
+                return;
+        	  if (r2 != 0){
+        	      if (r2/(cutoff*cutoff) < *dmin * (*dmin))
+        	      *dmin = sqrt(r2)/cutoff;
+                (*davg) += sqrt(r2)/cutoff;
+                (*navg) ++;
+            }
+
+            r2 = fmax( r2, min_r*min_r );
+            double r = sqrt( r2 );
+
+            //  very simple short-range repulsive force
+            double coef = ( 1 - cutoff / r ) / r2 / mass;
+            this->p.ax += coef * dx;
+            this->p.ay += coef * dy;
         }
-    }
-
-    void apply_force(particle_t &neighbor , double *dmin, double *davg, int *navg)
-    {
-        double dx = neighbor.x - this->p.x;
-        double dy = neighbor.y - this->p.y;
-        double r2 = dx * dx + dy * dy;
-        if(r2 > cutoff*cutoff)
-            return;
-    	  if (r2 != 0){
-    	      if (r2/(cutoff*cutoff) < *dmin * (*dmin))
-    	      *dmin = sqrt(r2)/cutoff;
-            (*davg) += sqrt(r2)/cutoff;
-            (*navg) ++;
-        }
-
-        r2 = fmax( r2, min_r*min_r );
-        double r = sqrt( r2 );
-
-        //  very simple short-range repulsive force
-        double coef = ( 1 - cutoff / r ) / r2 / mass;
-        this->p.ax += coef * dx;
-        this->p.ay += coef * dy;
-    }
 };
 
 //bins to divide the canvas into smaller squares
-class bin_t{
-public:
-    std::list<my_particle_index*> particles; //saves the particles in the bins
-    std::list<my_particle_index*> newparticles; //saves the particles that joining the bin
+class bin_t
+{
+    public:
+        std::list<my_particle_index*> particles; //saves the particles in the bins
+        std::list<my_particle_index*> newparticles; //saves the particles that joining the bin
 
-    //add one new particles into the bin
-    void add_particles(my_particle_index * p){
-        this->particles.push_back(p);
-    }
-
-    //add all incoming particles into the bin
-    void splice(){
-        this->particles.splice(this->particles.end(), this->newparticles);
-    }
-
-    //remove all particles in the new paritcles buffer
-    void clear_newparticles(){
-        this->newparticles.clear();
-    }
-
-    //remove all particle in the bins
-    void clear_particles(){
-        this->particles.clear();
-    }
-
-    //update the particles in the bin after the move
-    void binning(){
-        splice();
-        clear_newparticles();
-    }
-
-    //get neighbor particles
-    void neighbor_particles(std::vector<my_particle_index> &res){
-        for(auto &p: this->particles){
-            res.push_back(*p);
+        //add one new particles into the bin
+        void add_particles(my_particle_index * p){
+            this->particles.push_back(p);
         }
-    }
 
-    //move the particles in the bins for one time step
-    void moved_particles_in_bin(std::vector<bin_t> &bins, int b_it){
-        auto it = this->particles.begin();
-        while (it != this->particles.end()) {
-            my_particle_index *p = *it;
-            p->move();
-            double bin_side_len = mpi_size / n_bins_side;
-            int row_b = floor(p->p.x / bin_side_len), col_b = floor(p->p.y / bin_side_len);
-            int new_b_idx =  row_b + col_b * n_bins_side;
-            if (new_b_idx != b_it) { //if particle is not in the same position
-                p->bin = new_b_idx;
-                this->particles.erase(it++);
-                bins[new_b_idx].newparticles.push_back(p);
-            } else {
-                it++;
+        //add all incoming particles into the bin
+        void splice(){
+            this->particles.splice(this->particles.end(), this->newparticles);
+        }
+
+        //remove all particles in the new paritcles buffer
+        void clear_newparticles(){
+            this->newparticles.clear();
+        }
+
+        //remove all particle in the bins
+        void clear_particles(){
+            this->particles.clear();
+        }
+
+        //update the particles in the bin after the move
+        void binning(){
+            splice();
+            clear_newparticles();
+        }
+
+        //get neighbor particles
+        void neighbor_particles(std::vector<my_particle_index> &res){
+            for(auto &p: this->particles){
+                res.push_back(*p);
             }
         }
-    }
+
+        //move the particles in the bins for one time step
+        void moved_particles_in_bin(std::vector<bin_t> &bins, int b_it){
+            auto it = this->particles.begin();
+            while (it != this->particles.end()) {
+                my_particle_index *p = *it;
+                p->move();
+                double bin_side_len = mpi_size / n_bins_side;
+                int row_b = floor(p->p.x / bin_side_len), col_b = floor(p->p.y / bin_side_len);
+                int new_b_idx =  row_b + col_b * n_bins_side;
+                if (new_b_idx != b_it) { //if particle is not in the same position
+                    p->bin = new_b_idx;
+                    this->particles.erase(it++);
+                    bins[new_b_idx].newparticles.push_back(p);
+                } else {
+                    it++;
+                }
+            }
+        }
 };
 
-bool operator<(const my_particle_index &a, const my_particle_index &b) {
+bool operator<(const my_particle_index &a, const my_particle_index &b)
+{
     return a.idx < b.idx;
 }
 
 
 //initialize the position in the particles
-void init_particles_mpi(int rank, int n, double size, my_particle_index *p) {
+void init_particles_mpi(int rank, int n, double size, my_particle_index *p)
+{
     if(rank != 0)
         return;
     srand48( time( NULL ) );
@@ -145,7 +146,9 @@ void init_particles_mpi(int rank, int n, double size, my_particle_index *p) {
 
     int *shuffle = (int*)malloc( n * sizeof(int) );
     for( int i = 0; i < n; i++ )
+    {
         shuffle[i] = i;
+    }
 
     for( int i = 0; i < n; i++ )
     {
@@ -168,15 +171,18 @@ void init_particles_mpi(int rank, int n, double size, my_particle_index *p) {
 }
 
 //get the bin id for a particle
-int particle_bin(double canvas_side_len, my_particle_index &p) {
+int particle_bin(double canvas_side_len, my_particle_index &p)
+{
     int bin_row = p.p.x / (canvas_side_len / n_bins_side);
     int bin_col = p.p.y / (canvas_side_len / n_bins_side);
     return bin_col * n_bins_side + bin_row;
 }
 
 //match the particles to the corresponding bin
-void assign_particles_to_bins(int n, double canvas_side_len, my_particle_index *particles, std::vector<bin_t> &bins) {
-    for (int i = 0; i < n; ++i) {
+void assign_particles_to_bins(int n, double canvas_side_len, my_particle_index *particles, std::vector<bin_t> &bins)
+{
+    for(int i = 0; i < n; ++i)
+    {
         my_particle_index &p = particles[i];
         int b_idx = particle_bin(canvas_side_len, p);
         p.bin = particle_bin(canvas_side_len, p);
@@ -185,8 +191,10 @@ void assign_particles_to_bins(int n, double canvas_side_len, my_particle_index *
 }
 
 //initialize the bins in the canvas
-void init_bins(int n, double size, my_particle_index *particles, std::vector<bin_t> &bins) {
-    for (int b_idx = 0; b_idx < n_bins; b_idx++) {
+void init_bins(int n, double size, my_particle_index *particles, std::vector<bin_t> &bins)
+{
+    for(int b_idx = 0; b_idx < n_bins; b_idx++)
+    {
         bin_t b;
         bins.push_back(b);
     }
@@ -194,26 +202,36 @@ void init_bins(int n, double size, my_particle_index *particles, std::vector<bin
 }
 
 //get the which process the bin is in
-int rank_of_bin(int b_idx) {
+int rank_of_bin(int b_idx)
+{
     int b_row = b_idx % n_bins_side;
     return b_row / n_rows_proc;
 }
 
 //get bins in this processor
-std::vector<int> bins_of_rank(int rank) {
+std::vector<int> bins_of_rank(int rank)
+{
     std::vector<int> res;
     int row_s = rank * n_rows_proc,
         row_e = min(n_bins_side, n_rows_proc * (rank + 1));
-    for (int row = row_s; row < row_e; ++row)
+    for(int row = row_s; row < row_e; ++row)
+    {
         for (int col = 0; col < n_bins_side; ++col)
+        {
             res.push_back(row + col * n_bins_side);
+        }
+    }
     return res;
 }
 
 //get boerder particles around this processor
-std::vector<my_particle_index> get_rank_border_particles(int nei_rank, std::vector<bin_t> &bins) {
+std::vector<my_particle_index> get_rank_border_particles(int nei_rank, std::vector<bin_t> &bins)
+{
     int row;
-    if (nei_rank < rank) row = rank * n_rows_proc;
+    if(nei_rank < rank)
+    {
+        row = rank * n_rows_proc;
+    }
     else row = n_rows_proc * (rank + 1) - 1;
 
     std::vector<my_particle_index> res;
@@ -291,11 +309,11 @@ int main(int argc, char **argv)
     std::fill_n(lens, 5, 1);
     std::fill_n(types, 4, MPI_DOUBLE);
     types[4] = MPI_INT;
-    disp[0] = find_particle_offset(x);
-    disp[1] = find_particle_offset(y);
-    disp[2] = find_particle_offset(vx);
-    disp[3] = find_particle_offset(vy);
-    disp[4] = (size_t)&(((my_particle_index*)0)->idx);
+    disp[0] = (size_t)& (((my_particle_index*)0)->p.x);
+    disp[1] = (size_t)& (((my_particle_index*)0)->p.y);
+    disp[2] = (size_t)& (((my_particle_index*)0)->p.vx);
+    disp[3] = (size_t)& (((my_particle_index*)0)->p.vy);
+    disp[4] = (size_t)& (((my_particle_index*)0)->idx);
 
     MPI_Type_create_struct(5, lens, disp, types, &temp);
     MPI_Type_create_resized(temp, 0, particle_size, &PARTICLE);
@@ -370,11 +388,15 @@ int main(int argc, char **argv)
         for (auto &idx:local_bin_idxs){
             int b1_row = idx % n_bins_side;
             int b1_col = idx / n_bins_side;
-            for_bin(b2_row, b1_row){
-                for_bin(b2_col, b1_col){
+            for(int b2_row = max(0, b1_row - 1); b2_row <= min(n_bins_side - 1, b1_row + 1); ++b2_row)
+            {
+                for(int b2_col = max(0, b1_col - 1); b2_col <= min(n_bins_side - 1, b1_col + 1); ++b2_col)
+                {
                     int b2 = b2_row + b2_col * n_bins_side;
-                    for (auto &it1: bins[idx].particles) {
-                        for (auto &it2: bins[b2].particles) {
+                    for(auto &it1 : bins[idx].particles)
+                    {
+                        for(auto &it2 : bins[b2].particles)
+                        {
                              it1->apply_force(it2->p, &dmin, &davg, &navg);
                         }
                     }
