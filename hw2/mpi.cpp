@@ -19,7 +19,7 @@ double mpi_size;
 MPI_Datatype PARTICLE;
 
 //wrap the paritcles with index, providing helper function for mpi
-class my_particle_index
+class Indexed_particle
 {
     public:
         particle_t p;
@@ -36,12 +36,12 @@ class my_particle_index
             //  bounce from walls
             while(this->p.x < 0 || this->p.x > mpi_size)
             {
-                this->p.x  = this->p.x < 0 ? -this->p.x : 2 * mpi_size- this->p.x;
+                this->p.x  = this->p.x < 0 ? -this->p.x : 2 * mpi_size - this->p.x;
                 this->p.vx = -this->p.vx;
             }
             while(this->p.y < 0 || this->p.y > mpi_size)
             {
-                this->p.y  = this->p.y < 0 ? -this->p.y : 2 * mpi_size-this->p.y;
+                this->p.y  = this->p.y < 0 ? -this->p.y : 2 * mpi_size - this->p.y;
                 this->p.vy = -this->p.vy;
             }
         }
@@ -75,14 +75,14 @@ class my_particle_index
 };
 
 //bins to divide the canvas into smaller squares
-class bin_t
+class Bin
 {
     public:
-        list<my_particle_index*> particles; //saves the particles in the bins
-        list<my_particle_index*> newparticles; //saves the particles that joining the bin
+        list<Indexed_particle*> particles; //saves the particles in the bins
+        list<Indexed_particle*> newparticles; //saves the particles that joining the bin
 
         //add one new particles into the bin
-        void add_particles(my_particle_index *p)
+        void add_particles(Indexed_particle *p)
         {
             this->particles.push_back(p);
         }
@@ -113,7 +113,7 @@ class bin_t
         }
 
         //get neighbor particles
-        void neighbor_particles(vector<my_particle_index> &res)
+        void neighbor_particles(vector<Indexed_particle> &res)
         {
             for(auto &p : this->particles)
             {
@@ -122,12 +122,12 @@ class bin_t
         }
 
         //move the particles in the bins for one time step
-        void moved_particles_in_bin(vector<bin_t> &bins, int b_it)
+        void moved_particles_in_bin(vector<Bin> &bins, int b_it)
         {
             auto it = this->particles.begin();
             while(it != this->particles.end())
             {
-                my_particle_index *p = *it;
+                Indexed_particle *p = *it;
                 p->move();
                 double bin_side_len = mpi_size / n_bins_side;
                 int row_b = floor(p->p.x / bin_side_len), col_b = floor(p->p.y / bin_side_len);
@@ -147,7 +147,7 @@ class bin_t
 };
 
 //initialize the position in the particles
-void init_particles_mpi(int mpi_rank, int n, double size, my_particle_index *p)
+void init_particles_mpi(int mpi_rank, int n, double size, Indexed_particle *p)
 {
     if(mpi_rank != 0)
     {
@@ -185,7 +185,7 @@ void init_particles_mpi(int mpi_rank, int n, double size, my_particle_index *p)
 }
 
 //get the bin id for a particle
-int particle_bin(double canvas_side_len, my_particle_index &p)
+int particle_bin(double canvas_side_len, Indexed_particle &p)
 {
     int bin_row = p.p.x * n_bins_side / canvas_side_len;
     int bin_col = p.p.y * n_bins_side / canvas_side_len;
@@ -193,11 +193,11 @@ int particle_bin(double canvas_side_len, my_particle_index &p)
 }
 
 //match the particles to the corresponding bin
-void assign_particles_to_bins(int n, double canvas_side_len, my_particle_index *particles, vector<bin_t> &bins)
+void assign_particles_to_bins(int n, double canvas_side_len, Indexed_particle *particles, vector<Bin> &bins)
 {
     for(int i = 0; i < n; ++i)
     {
-        my_particle_index &p = particles[i];
+        Indexed_particle &p = particles[i];
         int b_idx = particle_bin(canvas_side_len, p);
         p.bin = particle_bin(canvas_side_len, p);
         bins[b_idx].add_particles(&p);
@@ -205,11 +205,11 @@ void assign_particles_to_bins(int n, double canvas_side_len, my_particle_index *
 }
 
 //initialize the bins in the canvas
-void init_bins(int n, double size, my_particle_index *particles, vector<bin_t> &bins)
+void init_bins(int n, double size, Indexed_particle *particles, vector<Bin> &bins)
 {
     for(int b_idx = 0; b_idx < n_bins; b_idx++)
     {
-        bin_t b;
+        Bin b;
         bins.push_back(b);
     }
     assign_particles_to_bins(n, size, particles, bins);
@@ -238,7 +238,7 @@ vector<int> bins_of_mpi_rank(int mpi_rank)
 }
 
 //get boerder particles around this processor
-vector<my_particle_index> get_mpi_rank_border_particles(int nei_mpi_rank, vector<bin_t> &bins)
+vector<Indexed_particle> get_mpi_rank_border_particles(int nei_mpi_rank, vector<Bin> &bins)
 {
     int row;
     if(nei_mpi_rank < mpi_rank)
@@ -250,14 +250,14 @@ vector<my_particle_index> get_mpi_rank_border_particles(int nei_mpi_rank, vector
         row = n_rows_proc * (mpi_rank + 1) - 1;
     }
 
-    vector<my_particle_index> res;
+    vector<Indexed_particle> res;
     if(row < 0 || row >= n_bins_side)
     {
         return res;
     }
     for(int col = 0; col < n_bins_side; ++col)
     {
-        bin_t &b = bins[row + col * n_bins_side];
+        Bin &b = bins[row + col * n_bins_side];
         b.neighbor_particles(res);
     }
     return res;
@@ -296,13 +296,13 @@ int main(int argc, char **argv)
     FILE *fsum = sumname && mpi_rank == 0 ? fopen (sumname, "a") : NULL;
 
     // Allocate receieve & send buffer
-    my_particle_index *mpi_buff = new my_particle_index[3 * n];
-    MPI_Buffer_attach(mpi_buff, 10 * n * sizeof(my_particle_index));
+    Indexed_particle *mpi_buff = new Indexed_particle[3 * n];
+    MPI_Buffer_attach(mpi_buff, 10 * n * sizeof(Indexed_particle));
 
     // Allocate grobal particle buffer
-    my_particle_index *particles = (my_particle_index*)malloc(n * sizeof(my_particle_index));
+    Indexed_particle *particles = (Indexed_particle*)malloc(n * sizeof(Indexed_particle));
     // Allocate local particle buffer
-    my_particle_index *local_particles = (my_particle_index*)malloc(n * sizeof(my_particle_index));
+    Indexed_particle *local_particles = (Indexed_particle*)malloc(n * sizeof(Indexed_particle));
 
     // Allocate particle simulation coeffiency
     mpi_size = sqrt(density * n);
@@ -325,22 +325,22 @@ int main(int argc, char **argv)
     MPI_Datatype temp;
     MPI_Datatype types[5];
 
-    particle_size = sizeof(my_particle_index);
+    particle_size = sizeof(Indexed_particle);
     fill_n(lens, 5, 1);
     fill_n(types, 4, MPI_DOUBLE);
     types[4] = MPI_INT;
-    disp[0] = (size_t)& (((my_particle_index*)0)->p.x);
-    disp[1] = (size_t)& (((my_particle_index*)0)->p.y);
-    disp[2] = (size_t)& (((my_particle_index*)0)->p.vx);
-    disp[3] = (size_t)& (((my_particle_index*)0)->p.vy);
-    disp[4] = (size_t)& (((my_particle_index*)0)->idx);
+    disp[0] = (size_t)& (((Indexed_particle*)0)->p.x);
+    disp[1] = (size_t)& (((Indexed_particle*)0)->p.y);
+    disp[2] = (size_t)& (((Indexed_particle*)0)->p.vx);
+    disp[3] = (size_t)& (((Indexed_particle*)0)->p.vy);
+    disp[4] = (size_t)& (((Indexed_particle*)0)->idx);
 
     MPI_Type_create_struct(5, lens, disp, types, &temp);
     MPI_Type_create_resized(temp, 0, particle_size, &PARTICLE);
     MPI_Type_commit(&PARTICLE);
 
     //scatter the paritcles to each processors base on location
-    my_particle_index *particles_by_bin = new my_particle_index[n];
+    Indexed_particle *particles_by_bin = new Indexed_particle[n];
     for(int pro = cur_displs = counter = 0; pro < n_proc && mpi_rank == 0; cur_displs += counter_sends[pro], ++pro)
     {
         counter_send = 0;
@@ -365,7 +365,7 @@ int main(int argc, char **argv)
     MPI_Scatterv(particles_by_bin, &counter_sends[0], &displs[0], PARTICLE, local_particles, n_local_particles, PARTICLE, 0, MPI_COMM_WORLD);
 
     // Initialize local bins
-    vector<bin_t> bins;
+    vector<Bin> bins;
     vector<int> local_bin_idxs = bins_of_mpi_rank(mpi_rank);
     init_bins(n_local_particles, size, local_particles, bins);
 
@@ -389,7 +389,7 @@ int main(int argc, char **argv)
         }
         for(auto &nei_mpi_rank : nei_mpi_ranks)
         {
-            vector<my_particle_index> border_particles = get_mpi_rank_border_particles(nei_mpi_rank, bins);
+            vector<Indexed_particle> border_particles = get_mpi_rank_border_particles(nei_mpi_rank, bins);
             int n_b_particles = border_particles.size();
             const void *buf = n_b_particles == 0 ? 0 : &border_particles[0];
             MPI_Request request;
@@ -398,7 +398,7 @@ int main(int argc, char **argv)
         }
 
         // neighbors collect border particles and assign to bins
-        my_particle_index *cur_pos = local_particles + n_local_particles;
+        Indexed_particle *cur_pos = local_particles + n_local_particles;
         int n_particles_received = 0;
         for(auto &nei_mpi_rank : nei_mpi_ranks)
         {
@@ -483,7 +483,7 @@ int main(int argc, char **argv)
         for(auto &nei_mpi_rank : neighbor_mpi_ranks)
         {
             vector<int> cur_bins = bins_of_mpi_rank(nei_mpi_rank);
-            vector<my_particle_index> moved_particles;
+            vector<Indexed_particle> moved_particles;
             for(auto b_idx : cur_bins)
             {
                 for(auto &p : bins[b_idx].newparticles)
@@ -498,8 +498,8 @@ int main(int argc, char **argv)
             MPI_Request_free(&request);
         }
 
-        my_particle_index *new_local_particles = new my_particle_index[n];
-        my_particle_index *tmp_pos = new_local_particles;
+        Indexed_particle *new_local_particles = new Indexed_particle[n];
+        Indexed_particle *tmp_pos = new_local_particles;
 
         for(auto &nei_mpi_rank : neighbor_mpi_ranks)
         {
