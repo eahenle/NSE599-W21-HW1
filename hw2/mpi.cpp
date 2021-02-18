@@ -185,10 +185,10 @@ void init_particles_mpi(int mpi_rank, int n, double size, Indexed_particle *p)
 }
 
 //get the bin id for a particle
-int particle_bin(double canvas_side_len, Indexed_particle &p)
+int particle_bin(double canvas_side_len, Indexed_particle &ip)
 {
-    int bin_row = p.p.x * n_bins_side / canvas_side_len;
-    int bin_col = p.p.y * n_bins_side / canvas_side_len;
+    int bin_row = ip.p.x * n_bins_side / canvas_side_len;
+    int bin_col = ip.p.y * n_bins_side / canvas_side_len;
     return bin_col * n_bins_side + bin_row;
 }
 
@@ -197,10 +197,10 @@ void assign_particles_to_bins(int n, double canvas_side_len, Indexed_particle *p
 {
     for(int i = 0; i < n; ++i)
     {
-        Indexed_particle &p = particles[i];
-        int b_idx = particle_bin(canvas_side_len, p);
-        p.bin = particle_bin(canvas_side_len, p);
-        bins[b_idx].add_particles(&p);
+        //Indexed_particle &p = particles[i];
+        int b_idx = particle_bin(canvas_side_len, particles[i]);
+        particles[i].bin = particle_bin(canvas_side_len, particles[i]);
+        bins[b_idx].add_particles(&particles[i]);
     }
 }
 
