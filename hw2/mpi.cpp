@@ -23,8 +23,8 @@ MPI_Datatype PARTICLE;
 class my_particle_index{
 public:
     particle_t p;
-    int index;
-    int bin_idx;
+    int idx;
+    int bin;
 
     void move()
     {
@@ -119,7 +119,7 @@ public:
             int row_b = floor(p->p.x / bin_side_len), col_b = floor(p->p.y / bin_side_len);
             int new_b_idx =  row_b + col_b * n_bins_side;
             if (new_b_idx != b_it) { //if particle is not in the same position
-                p->bin_idx = new_b_idx;
+                p->bin = new_b_idx;
                 this->particles.erase(it++);
                 bins[new_b_idx].newparticles.push_back(p);
             } else {
@@ -130,7 +130,7 @@ public:
 };
 
 bool operator<(const my_particle_index &a, const my_particle_index &b) {
-    return a.index < b.index;
+    return a.idx < b.idx;
 }
 
 
@@ -162,7 +162,7 @@ void init_particles_mpi(int rank, int n, double size, my_particle_index *p) {
         p[i].p.vx = drand48()*2-1;
         p[i].p.vy = drand48()*2-1;
 
-        p[i].index = i;
+        p[i].idx = i;
     }
     free( shuffle );
 }
@@ -179,7 +179,7 @@ void assign_particles_to_bins(int n, double canvas_side_len, my_particle_index *
     for (int i = 0; i < n; ++i) {
         my_particle_index &p = particles[i];
         int b_idx = particle_bin(canvas_side_len, p);
-        p.bin_idx = particle_bin(canvas_side_len, p);
+        p.bin = particle_bin(canvas_side_len, p);
         bins[b_idx].add_particles(&p);
     }
 }
@@ -295,7 +295,7 @@ int main(int argc, char **argv)
     disp[1] = find_particle_offset(y);
     disp[2] = find_particle_offset(vx);
     disp[3] = find_particle_offset(vy);
-    disp[4] = (size_t)&(((my_particle_index*)0)->index);
+    disp[4] = (size_t)&(((my_particle_index*)0)->idx);
 
     MPI_Type_create_struct(5, lens, disp, types, &temp);
     MPI_Type_create_resized(temp, 0, particle_size, &PARTICLE);

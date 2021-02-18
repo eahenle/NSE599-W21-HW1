@@ -42,8 +42,8 @@ void init_particles(int n, particle_t *p)
     int *shuffle = (int*)malloc(n * sizeof(int));
     for(int i = 0; i < n; i++)
     {
-		shuffle[i] = i;
-	}
+        shuffle[i] = i;
+    }
 
     for(int i = 0; i < n; i++)
     {
@@ -72,16 +72,16 @@ void apply_force(particle_t &particle, particle_t &neighbor, double *dmin, doubl
     double r2 = dx * dx + dy * dy;
     if(r2 > cutoff*cutoff)
     {
-		return;
-	}
-	if (r2 != 0)
+        return;
+    }
+    if(r2 != 0)
     {
-		if (r2/(cutoff*cutoff) < *dmin * (*dmin))
-    	{
-			*dmin = sqrt(r2) / cutoff;
-		}
-       (*davg) += sqrt(r2) / cutoff;
-       (*navg)++;
+        if(r2 / (cutoff * cutoff) < *dmin * (*dmin))
+        {
+            *dmin = sqrt(r2) / cutoff;
+        }
+        (*davg) += sqrt(r2) / cutoff;
+        (*navg)++;
     }
 
     r2 = fmax(r2, min_r * min_r);
@@ -127,8 +127,8 @@ void save(FILE *f, int n, particle_t *p)
     }
     for(int i = 0; i < n; i++)
     {
-		fprintf(f, "%g %g\n", p[i].x, p[i].y);
-	}
+        fprintf(f, "%g %g\n", p[i].x, p[i].y);
+    }
 }
 
 //  command line option processing
@@ -136,11 +136,11 @@ int find_option(int argc, char **argv, const char *option)
 {
     for(int i = 1; i < argc; i++)
     {
-		if(strcmp(argv[i], option) == 0)
+        if(strcmp(argv[i], option) == 0)
         {
-			return i;
-		}
-	}
+            return i;
+        }
+    }
     return -1;
 }
 
@@ -149,8 +149,8 @@ int read_int(int argc, char **argv, const char *option, int default_value)
     int iplace = find_option(argc, argv, option);
     if(iplace >= 0 && iplace < argc - 1)
     {
-		return atoi(argv[iplace + 1]);
-	}
+        return atoi(argv[iplace + 1]);
+    }
     return default_value;
 }
 
@@ -159,7 +159,7 @@ char *read_string(int argc, char **argv, const char *option, char *default_value
     int iplace = find_option(argc, argv, option);
     if(iplace >= 0 && iplace < argc - 1)
     {
-		return argv[iplace + 1];
-	}
+        return argv[iplace + 1];
+    }
     return default_value;
 }
