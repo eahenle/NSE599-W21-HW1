@@ -79,7 +79,7 @@ class Bin
         list<Indexed_particle*> incoming_particles; // staging ground for particles entering the bin during a move
 
         //move the particles in the bins for one time step
-        void moved_particles_in_bin(vector<Bin> &bins, int b_it)
+        void move_particles(vector<Bin> &bins, int b_it)
         {
             auto it = this->particles.begin();
             while(it != this->particles.end())
@@ -87,7 +87,8 @@ class Bin
                 Indexed_particle *p = *it;
                 p->move();
                 double bin_side_len = mpi_size / nb_bins_per_row;
-                int row_b = floor(p->p.x / bin_side_len), col_b = floor(p->p.y / bin_side_len);
+                int row_b = floor(p->p.x / bin_side_len);
+                int col_b = floor(p->p.y / bin_side_len);
                 int new_b_idx =  row_b + col_b * nb_bins_per_row;
                 if(new_b_idx != b_it)
                 { //if particle is not in the same position
@@ -104,7 +105,7 @@ class Bin
 };
 
 //initialize the position in the particles
-void init_particles_mpi(int mpi_rank, int n, double size, Indexed_particle *ip)
+void init_particles(int mpi_rank, int n, double size, Indexed_particle *ip)
 {
     if(mpi_rank != 0)
     {
@@ -272,7 +273,7 @@ int main(int argc, char **argv)
     nb_bins = nb_bins_per_row * nb_bins_per_row;
     nb_rows_per_process = ceil(nb_bins_per_row / (float)nb_procs);
 
-    init_particles_mpi(mpi_rank, n, size, particles);
+    init_particles(mpi_rank, n, size, particles);
 
     // initialize MPI PARTICLE type
     int n_local_particles, particle_size;
@@ -420,7 +421,7 @@ int main(int argc, char **argv)
         //  move particles in each bins
         for(auto &b_it : local_bin_idxs)
         {
-            bins[b_it].moved_particles_in_bin(bins, b_it);
+            bins[b_it].move_particles(bins, b_it);
         }
 
         // refresh the particles in bins
