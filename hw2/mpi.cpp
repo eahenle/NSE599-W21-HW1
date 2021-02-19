@@ -79,7 +79,7 @@ class Bin
         list<Indexed_particle*> incoming_particles; // staging ground for particles entering the bin during a move
 
         //move the particles in the bins for one time step
-        void move_particles(vector<Bin> &bins, int b_it)
+        void move_particles(vector<Bin> &bins, int bin_index)
         {
             auto it = this->particles.begin();
             while(it != this->particles.end())
@@ -89,12 +89,12 @@ class Bin
                 double bin_side_len = mpi_size / nb_bins_per_row;
                 int row_b = floor(p->p.x / bin_side_len);
                 int col_b = floor(p->p.y / bin_side_len);
-                int new_b_idx =  row_b + col_b * nb_bins_per_row;
-                if(new_b_idx != b_it)
+                int new_bin_index =  row_b + col_b * nb_bins_per_row;
+                if(new_bin_index != bin_index)
                 { //if particle is not in the same position
-                    p->bin = new_b_idx;
+                    p->bin = new_bin_index;
                     this->particles.erase(it++);
-                    bins[new_b_idx].incoming_particles.push_back(p);
+                    bins[new_bin_index].incoming_particles.push_back(p);
                 }
                 else
                 {
@@ -419,16 +419,16 @@ int main(int argc, char **argv)
         }
 
         //  move particles in each bins
-        for(auto &b_it : local_bin_idxs)
+        for(auto &bin_index : local_bin_idxs)
         {
-            bins[b_it].move_particles(bins, b_it);
+            bins[bin_index].move_particles(bins, bin_index);
         }
 
         // refresh the particles in bins
-        for(auto &b_it : local_bin_idxs)
+        for(auto &bin_index : local_bin_idxs)
         {
-            bins[b_it].particles.splice(bins[b_it].particles.end(), bins[b_it].incoming_particles);
-            bins[b_it].incoming_particles.clear();
+            bins[bin_index].particles.splice(bins[bin_index].particles.end(), bins[bin_index].incoming_particles);
+            bins[bin_index].incoming_particles.clear();
         }
 
         // exchange particles after moveing
