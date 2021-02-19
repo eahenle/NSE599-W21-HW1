@@ -78,8 +78,24 @@ class Bin
         list<Indexed_particle*> particles; // the bin's particles
         list<Indexed_particle*> incoming_particles; // staging ground for particles entering the bin during a move
 
+        // append the particles entering the bin to its particle list
+        void binning()
+        {
+            this->particles.splice(this->particles.end(), this->incoming_particles);
+            this->incoming_particles.clear();
+        }
+
+        // get nearby particles
+        void get_nearby_particles(vector<Indexed_particle> &res)
+        {
+            for(auto &p : this->particles)
+            {
+                res.push_back(*p);
+            }
+        }
+
         //move the particles in the bins for one time step
-        void move_particles(vector<Bin> &bins, int bin_index)
+        void moved_particles_in_bin(vector<Bin> &bins, int b_it)
         {
             auto it = this->particles.begin();
             while(it != this->particles.end())
@@ -87,14 +103,13 @@ class Bin
                 Indexed_particle *p = *it;
                 p->move();
                 double bin_side_len = mpi_size / nb_bins_per_row;
-                int row_b = floor(p->p.x / bin_side_len);
-                int col_b = floor(p->p.y / bin_side_len);
-                int new_bin_index =  row_b + col_b * nb_bins_per_row;
-                if(new_bin_index != bin_index)
+                int row_b = floor(p->p.x / bin_side_len), col_b = floor(p->p.y / bin_side_len);
+                int new_b_idx =  row_b + col_b * nb_bins_per_row;
+                if(new_b_idx != b_it)
                 { //if particle is not in the same position
-                    p->bin = new_bin_index;
+                    p->bin = new_b_idx;
                     this->particles.erase(it++);
-                    bins[new_bin_index].incoming_particles.push_back(p);
+                    bins[new_b_idx].incoming_particles.push_back(p);
                 }
                 else
                 {
@@ -105,7 +120,7 @@ class Bin
 };
 
 //initialize the position in the particles
-void init_particles(int mpi_rank, int n, double size, Indexed_particle *ip)
+void init_particles_mpi(int mpi_rank, int n, double size, Indexed_particle *ip)
 {
     if(mpi_rank != 0)
     {
@@ -216,10 +231,7 @@ vector<Indexed_particle> get_mpi_rank_border_particles(int nei_mpi_rank, vector<
     for(int col = 0; col < nb_bins_per_row; ++col)
     {
         Bin &b = bins[row + col * nb_bins_per_row];
-        for(auto &p : b.particles)
-        {
-            res.push_back(*p);
-        }
+        b.get_nearby_particles(res);
     }
     return res;
 }
@@ -273,7 +285,7 @@ int main(int argc, char **argv)
     nb_bins = nb_bins_per_row * nb_bins_per_row;
     nb_rows_per_process = ceil(nb_bins_per_row / (float)nb_procs);
 
-    init_particles(mpi_rank, n, size, particles);
+    init_particles_mpi(mpi_rank, n, size, particles);
 
     // initialize MPI PARTICLE type
     int n_local_particles, particle_size;
@@ -419,16 +431,15 @@ int main(int argc, char **argv)
         }
 
         //  move particles in each bins
-        for(auto &bin_index : local_bin_idxs)
+        for(auto &b_it : local_bin_idxs)
         {
-            bins[bin_index].move_particles(bins, bin_index);
+            bins[b_it].moved_particles_in_bin(bins, b_it);
         }
 
         // refresh the particles in bins
-        for(auto &bin_index : local_bin_idxs)
+        for(auto &b_it : local_bin_idxs)
         {
-            bins[bin_index].particles.splice(bins[bin_index].particles.end(), bins[bin_index].incoming_particles);
-            bins[bin_index].incoming_particles.clear();
+            bins[b_it].binning();
         }
 
         // exchange particles after moveing
