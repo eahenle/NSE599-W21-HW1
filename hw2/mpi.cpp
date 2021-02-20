@@ -79,14 +79,14 @@ class Bin
         list<Indexed_particle*> incoming_particles; // staging ground for particles entering the bin during a move
 
         // append the particles entering the bin to its particle list
-        void binning()
+        void take_new_particles()
         {
             this->particles.splice(this->particles.end(), this->incoming_particles);
             this->incoming_particles.clear();
         }
 
         // get nearby particles
-        void get_nearby_particles(vector<Indexed_particle> &res)
+        void get_neighbor_particles(vector<Indexed_particle> &res)
         {
             for(auto &p : this->particles)
             {
@@ -94,98 +94,87 @@ class Bin
             }
         }
 
-        //move the particles in the bins for one time step
-        void moved_particles_in_bin(vector<Bin> &bins, int b_it)
+        // transfer particles between bins
+        void transfer_particles(vector<Bin> &bins, int bin_index)
         {
-            auto it = this->particles.begin();
-            while(it != this->particles.end())
+            auto particle_list_ptr = this->particles.begin();
+            while(particle_list_ptr != this->particles.end())
             {
-                Indexed_particle *p = *it;
+                Indexed_particle *p = *particle_list_ptr;
                 p->move();
                 double bin_side_len = mpi_size / nb_bins_per_row;
                 int row_b = floor(p->p.x / bin_side_len), col_b = floor(p->p.y / bin_side_len);
-                int new_b_idx =  row_b + col_b * nb_bins_per_row;
-                if(new_b_idx != b_it)
-                { //if particle is not in the same position
-                    p->bin = new_b_idx;
-                    this->particles.erase(it++);
-                    bins[new_b_idx].incoming_particles.push_back(p);
+                int new_bin_index =  row_b + col_b * nb_bins_per_row;
+                if(new_bin_index != bin_index)
+                { // case: particle must transfer
+                    p->bin = new_bin_index;
+                    this->particles.erase(particle_list_ptr++);
+                    bins[new_bin_index].incoming_particles.push_back(p);
                 }
                 else
-                {
-                    it++;
+                { // case: particle stays in its current bin
+                    particle_list_ptr++;
                 }
             }
         }
 };
 
-//initialize the position in the particles
-void init_particles_mpi(int mpi_rank, int n, double size, Indexed_particle *ip)
+// override init_particles for Indexed_particle type
+void init_particles(int mpi_rank, int n, double size, Indexed_particle *ip)
 {
     if(mpi_rank != 0)
     {
         return;
     }
     srand48(time(NULL));
-
     int sx = (int)ceil(sqrt((double)n));
     int sy = (n + sx - 1) / sx;
-
     int *shuffle = (int*)malloc(n * sizeof(int));
     for(int i = 0; i < n; i++)
     {
         shuffle[i] = i;
     }
-
     for(int i = 0; i < n; i++)
     {
-        //  make sure particles are not spatially sorted
         int j = lrand48() % (n - i);
         int k = shuffle[j];
         shuffle[j] = shuffle[n - i - 1];
-
-        //  distribute particles evenly to ensure proper spacing
         ip[i].p.x = size * (1 + (k % sx)) / (1 + sx);
         ip[i].p.y = size * (1 + (k / sx)) / (1 + sy);
-
-        //  assign random velocities within a bound
         ip[i].p.vx = drand48() * 2 - 1;
         ip[i].p.vy = drand48() * 2 - 1;
-
         ip[i].idx = i;
     }
     free(shuffle);
 }
 
-//get the bin id for a particle
-int particle_bin(double canvas_side_len, Indexed_particle &ip)
+// get particle bin index
+int get_bin_index(double size, Indexed_particle &ip)
 {
-    int bin_row = ip.p.x * nb_bins_per_row / canvas_side_len;
-    int bin_col = ip.p.y * nb_bins_per_row / canvas_side_len;
+    int bin_row = ip.p.x * nb_bins_per_row / size;
+    int bin_col = ip.p.y * nb_bins_per_row / size;
     return bin_col * nb_bins_per_row + bin_row;
 }
 
-//match the particles to the corresponding bin
-void assign_particles_to_bins(int n, double canvas_side_len, Indexed_particle *particles, vector<Bin> &bins)
+// put particles into bins
+void bin_particles(int n, double size, Indexed_particle *particles, vector<Bin> &bins)
 {
     for(int i = 0; i < n; ++i)
     {
-        //Indexed_particle &p = particles[i];
-        int b_idx = particle_bin(canvas_side_len, particles[i]);
-        particles[i].bin = particle_bin(canvas_side_len, particles[i]);
-        bins[b_idx].particles.push_back(&particles[i]);
+        particles[i].bin = get_bin_index(size, particles[i]);
+        bins[get_bin_index(size, particles[i])].particles.push_back(&particles[i]);
     }
 }
 
-//initialize the bins in the canvas
-void init_bins(int n, double size, Indexed_particle *particles, vector<Bin> &bins)
+// initialize bins
+void initialize_bins(int n, double size, Indexed_particle *particles, vector<Bin> &bins)
 {
     for(int b_idx = 0; b_idx < nb_bins; b_idx++)
     {
         Bin b;
         bins.push_back(b);
     }
-    assign_particles_to_bins(n, size, particles, bins);
+    bin_particles(n, size, particles, bins);
 }
 
 //get the which process the bin is in
@@ -231,7 +220,7 @@ vector<Indexed_particle> get_mpi_rank_border_particles(int nei_mpi_rank, vector<
     for(int col = 0; col < nb_bins_per_row; ++col)
     {
         Bin &b = bins[row + col * nb_bins_per_row];
-        b.get_nearby_particles(res);
+        b.get_neighbor_particles(res);
     }
     return res;
 }
@@ -285,7 +274,7 @@ int main(int argc, char **argv)
     nb_bins = nb_bins_per_row * nb_bins_per_row;
     nb_rows_per_process = ceil(nb_bins_per_row / (float)nb_procs);
 
-    init_particles_mpi(mpi_rank, n, size, particles);
+    init_particles(mpi_rank, n, size, particles);
 
     // initialize MPI PARTICLE type
     int n_local_particles, particle_size;
@@ -319,7 +308,7 @@ int main(int argc, char **argv)
         counter_send = 0;
         for(int i = 0; i < n; ++i)
         {
-            if(mpi_rank_of_bin(particle_bin(size, particles[i])) != pro)
+            if(mpi_rank_of_bin(get_bin_index(size, particles[i])) != pro)
             {
                 continue;
             }
@@ -340,7 +329,7 @@ int main(int argc, char **argv)
     // Initialize local bins
     vector<Bin> bins;
     vector<int> local_bin_idxs = bins_of_mpi_rank(mpi_rank);
-    init_bins(n_local_particles, size, local_particles, bins);
+    initialize_bins(n_local_particles, size, local_particles, bins);
 
     //  simulate a number of time steps
     double simulation_time = read_timer();
@@ -378,7 +367,7 @@ int main(int argc, char **argv)
             MPI_Status status;
             MPI_Recv(cur_pos, n, PARTICLE, nei_mpi_rank, 0, MPI_COMM_WORLD, &status);
             MPI_Get_count(&status, PARTICLE, &n_particles_received);
-            assign_particles_to_bins(n_particles_received, size, cur_pos, bins);
+            bin_particles(n_particles_received, size, cur_pos, bins);
             cur_pos += n_particles_received;
             n_local_particles += n_particles_received;
         }
@@ -431,15 +420,15 @@ int main(int argc, char **argv)
         }
 
         //  move particles in each bins
-        for(auto &b_it : local_bin_idxs)
+        for(auto &bin_index : local_bin_idxs)
         {
-            bins[b_it].moved_particles_in_bin(bins, b_it);
+            bins[bin_index].transfer_particles(bins, bin_index);
         }
 
         // refresh the particles in bins
-        for(auto &b_it : local_bin_idxs)
+        for(auto &bin_index : local_bin_idxs)
         {
-            bins[b_it].binning();
+            bins[bin_index].take_new_particles();
         }
 
         // exchange particles after moveing
@@ -497,7 +486,7 @@ int main(int argc, char **argv)
         n_local_particles = tmp_pos - new_local_particles;
         // Rebin all particles
         bins.clear();
-        init_bins(n_local_particles, size, new_local_particles, bins);
+        initialize_bins(n_local_particles, size, new_local_particles, bins);
     }
 
     simulation_time = read_timer() - simulation_time;
