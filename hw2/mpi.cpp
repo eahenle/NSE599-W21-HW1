@@ -202,27 +202,17 @@ int mpi_rank_of_bin(int b_idx)
 // get particles from MPI rank-neighbor
 vector<Indexed_particle> get_mpi_rank_border_particles(int neighbor_rank, vector<Bin> &bins)
 {
-    int row;
-    if(neighbor_rank < mpi_rank)
+    int row = neighbor_rank < mpi_rank ? mpi_rank * nb_rows_per_process : nb_rows_per_process * (mpi_rank + 1) - 1;
+    vector<Indexed_particle> neighbors;
+    if(row >= 0 && row < nb_bins_per_row)
     {
-        row = mpi_rank * nb_rows_per_process;
+        for(int col = 0; col < nb_bins_per_row; ++col)
+        {
+            Bin &b = bins[row + col * nb_bins_per_row];
+            b.get_neighbor_particles(neighbors);
+        }
     }
-    else
-    {
-        row = nb_rows_per_process * (mpi_rank + 1) - 1;
-    }
-
-    vector<Indexed_particle> res;
-    if(row < 0 || row >= nb_bins_per_row)
-    {
-        return res;
-    }
-    for(int col = 0; col < nb_bins_per_row; ++col)
-    {
-        Bin &b = bins[row + col * nb_bins_per_row];
-        b.get_neighbor_particles(res);
-    }
-    return res;
+    return neighbors;
 }
 
 int main(int argc, char **argv)
@@ -261,29 +251,23 @@ int main(int argc, char **argv)
     Indexed_particle *mpi_buff = new Indexed_particle[3 * n];
     MPI_Buffer_attach(mpi_buff, 10 * n * sizeof(Indexed_particle));
 
-    // Allocate grobal particle buffer
+    // Allocate particles
     Indexed_particle *particles = (Indexed_particle*)malloc(n * sizeof(Indexed_particle));
-    // Allocate local particle buffer
     Indexed_particle *local_particles = (Indexed_particle*)malloc(n * sizeof(Indexed_particle));
 
-    // Allocate particle simulation coeffiency
+    // Copy of common size, to solve scope issue
     mpi_size = sqrt(density * n);
-    double size = sqrt(density * n);
 
-    nb_bins_per_row = max(1, size / (0.01 * 3));
+    nb_bins_per_row = max(1, mpi_size / (0.01 * 3));
     nb_bins = nb_bins_per_row * nb_bins_per_row;
     nb_rows_per_process = ceil(nb_bins_per_row / (float)nb_procs);
 
-    init_particles(mpi_rank, n, size, particles);
+    init_particles(mpi_rank, n, mpi_size, particles);
 
     // initialize MPI PARTICLE type
-    int n_local_particles, particle_size;
-    int counter, cur_displs, counter_send;
-    int lens[5];
-    int counter_sends[nb_procs];
-    int displs[nb_procs];
+    int n_local_particles, particle_size, counter, cur_displs, counter_send, lens[5], counter_sends[nb_procs], displs[nb_procs];
 
-    MPI_Aint disp[5];
+    MPI_Aint data[5];
     MPI_Datatype temp;
     MPI_Datatype types[5];
 
@@ -291,45 +275,42 @@ int main(int argc, char **argv)
     fill_n(lens, 5, 1);
     fill_n(types, 4, MPI_DOUBLE);
     types[4] = MPI_INT;
-    disp[0] = (size_t)& (((Indexed_particle*)0)->p.x);
-    disp[1] = (size_t)& (((Indexed_particle*)0)->p.y);
-    disp[2] = (size_t)& (((Indexed_particle*)0)->p.vx);
-    disp[3] = (size_t)& (((Indexed_particle*)0)->p.vy);
-    disp[4] = (size_t)& (((Indexed_particle*)0)->idx);
+    data[0] = (size_t)& (((Indexed_particle*)0)->p.x);
+    data[1] = (size_t)& (((Indexed_particle*)0)->p.y);
+    data[2] = (size_t)& (((Indexed_particle*)0)->p.vx);
+    data[3] = (size_t)& (((Indexed_particle*)0)->p.vy);
+    data[4] = (size_t)& (((Indexed_particle*)0)->idx);
 
-    MPI_Type_create_struct(5, lens, disp, types, &temp);
+    MPI_Type_create_struct(5, lens, data, types, &temp);
     MPI_Type_create_resized(temp, 0, particle_size, &PARTICLE);
     MPI_Type_commit(&PARTICLE);
 
-    //scatter the paritcles to each processors base on location
+    // scatter particles
     Indexed_particle *particles_by_bin = new Indexed_particle[n];
     for(int pro = cur_displs = counter = 0; pro < nb_procs && mpi_rank == 0; cur_displs += counter_sends[pro], ++pro)
     {
         counter_send = 0;
         for(int i = 0; i < n; ++i)
         {
-            if(mpi_rank_of_bin(get_bin_index(size, particles[i])) != pro)
+            if(mpi_rank_of_bin(get_bin_index(mpi_size, particles[i])) == pro)
             {
-                continue;
+                particles_by_bin[counter] = particles[i];
+                counter_send++;
+                counter++;
             }
-            particles_by_bin[counter] = particles[i];
-            counter_send++;
-            counter++;
         }
         counter_sends[pro] = counter_send;
         displs[pro] = cur_displs;
     }
 
-    // MPI initialize and send all other var in other processors
     MPI_Bcast(&counter_sends[0], nb_procs, MPI_INT, 0, MPI_COMM_WORLD);
     n_local_particles = counter_sends[mpi_rank];
     MPI_Bcast(&displs[0], nb_procs, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Scatterv(particles_by_bin, &counter_sends[0], &displs[0], PARTICLE, local_particles, n_local_particles, PARTICLE, 0, MPI_COMM_WORLD);
 
-    // Initialize local bins
     vector<Bin> bins;
-    vector<int> local_bin_idxs = bins_of_mpi_rank(mpi_rank);
-    initialize_bins(n_local_particles, size, local_particles, bins);
+    vector<int> local_bin_indices = bins_of_mpi_rank(mpi_rank);
+    initialize_bins(n_local_particles, mpi_size, local_particles, bins);
 
     //  simulate a number of time steps
     double simulation_time = read_timer();
@@ -339,7 +320,6 @@ int main(int argc, char **argv)
         dmin = 1.0;
         davg = 0.0;
 
-        // exchange neighbors particles for force computation
         vector<int> neighbor_ranks;
         if(mpi_rank > 0)
         {
@@ -352,34 +332,31 @@ int main(int argc, char **argv)
         for(auto &neighbor_rank : neighbor_ranks)
         {
             vector<Indexed_particle> border_particles = get_mpi_rank_border_particles(neighbor_rank, bins);
-            int n_b_particles = border_particles.size();
-            const void *buf = n_b_particles == 0 ? 0 : &border_particles[0];
+            const void *buf = border_particles.size() == 0 ? 0 : &border_particles[0];
             MPI_Request request;
-            MPI_Ibsend(buf, n_b_particles, PARTICLE, neighbor_rank, 0, MPI_COMM_WORLD, &request);
+            MPI_Ibsend(buf, border_particles.size(), PARTICLE, neighbor_rank, 0, MPI_COMM_WORLD, &request);
             MPI_Request_free(&request);
         }
 
         // neighbors collect border particles and assign to bins
         Indexed_particle *cur_pos = local_particles + n_local_particles;
-        int n_particles_received = 0;
+        int nb_particles_received = 0;
         for(auto &neighbor_rank : neighbor_ranks)
         {
             MPI_Status status;
             MPI_Recv(cur_pos, n, PARTICLE, neighbor_rank, 0, MPI_COMM_WORLD, &status);
-            MPI_Get_count(&status, PARTICLE, &n_particles_received);
-            bin_particles(n_particles_received, size, cur_pos, bins);
-            cur_pos += n_particles_received;
-            n_local_particles += n_particles_received;
+            MPI_Get_count(&status, PARTICLE, &nb_particles_received);
+            bin_particles(nb_particles_received, mpi_size, cur_pos, bins);
+            cur_pos += nb_particles_received;
+            n_local_particles += nb_particles_received;
         }
 
-        // Zero out the accelerations
+        // Compute accelerations
         for(int i = 0; i < n_local_particles; ++i)
         {
             local_particles[i].p.ax = local_particles[i].p.ay = 0;
         }
-
-        // Compute forces between each local bin and its neighbors
-        for(auto &idx:local_bin_idxs)
+        for(auto &idx:local_bin_indices)
         {
             int b1_row = idx % nb_bins_per_row;
             int b1_col = idx / nb_bins_per_row;
@@ -419,14 +396,14 @@ int main(int argc, char **argv)
             }
         }
 
-        //  move particles in each bins
-        for(auto &bin_index : local_bin_idxs)
+        //  update positions
+        for(auto &bin_index : local_bin_indices)
         {
             bins[bin_index].transfer_particles(bins, bin_index);
         }
 
-        // refresh the particles in bins
-        for(auto &bin_index : local_bin_idxs)
+        // synchronize bin contents
+        for(auto &bin_index : local_bin_indices)
         {
             bins[bin_index].take_new_particles();
         }
@@ -467,12 +444,12 @@ int main(int argc, char **argv)
         {
             MPI_Status status;
             MPI_Recv(tmp_pos, n, PARTICLE, neighbor_rank, 0, MPI_COMM_WORLD, &status);
-            int n_particles_received;
-            MPI_Get_count(&status, PARTICLE, &n_particles_received);
-            tmp_pos += n_particles_received;
+            int nb_particles_received;
+            MPI_Get_count(&status, PARTICLE, &nb_particles_received);
+            tmp_pos += nb_particles_received;
         }
 
-        for(auto &b_idx : local_bin_idxs)
+       for(auto &b_idx : local_bin_indices)
         {
             for(auto &p : bins[b_idx].particles)
             {
@@ -486,7 +463,7 @@ int main(int argc, char **argv)
         n_local_particles = tmp_pos - new_local_particles;
         // Rebin all particles
         bins.clear();
-        initialize_bins(n_local_particles, size, new_local_particles, bins);
+        initialize_bins(n_local_particles, mpi_size, new_local_particles, bins);
     }
 
     simulation_time = read_timer() - simulation_time;
