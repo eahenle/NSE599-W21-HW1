@@ -1,20 +1,20 @@
-CPU-GPU copy time = 1.8e-05 seconds
-n = 500, simulation time = 0.070238 seconds
-CPU-GPU copy time = 2.9e-05 seconds
-n = 1000, simulation time = 0.062636 seconds
-CPU-GPU copy time = 3.5e-05 seconds
-n = 2000, simulation time = 0.061775 seconds
-CPU-GPU copy time = 8.2e-05 seconds
-n = 4000, simulation time = 0.066204 seconds
-CPU-GPU copy time = 0.000114 seconds
-n = 8000, simulation time = 0.071816 seconds
-n = 500, simulation time = 0.045073 seconds, absmin = 1.000000, absavg = 0.000000
+CPU-GPU copy time = 1.9e-05 seconds
+n = 500, simulation time = 0.068705 seconds
+CPU-GPU copy time = 2.8e-05 seconds
+n = 1000, simulation time = 0.060381 seconds
+CPU-GPU copy time = 3.6e-05 seconds
+n = 2000, simulation time = 0.062575 seconds
+CPU-GPU copy time = 6.3e-05 seconds
+n = 4000, simulation time = 0.067518 seconds
+CPU-GPU copy time = 0.00012 seconds
+n = 8000, simulation time = 0.071537 seconds
+n = 500, simulation time = 0.04801 seconds, absmin = 1.000000, absavg = 0.000000
 The average distance is below 0.8 meaning that most particles are not interacting
-n = 1000, simulation time = 0.095264 seconds, absmin = 1.000000, absavg = 0.000000
+n = 1000, simulation time = 0.099076 seconds, absmin = 1.000000, absavg = 0.000000
 The average distance is below 0.8 meaning that most particles are not interacting
-n = 2000, simulation time = 0.197652 seconds, absmin = 1.000000, absavg = 0.000000
+n = 2000, simulation time = 0.203939 seconds, absmin = 1.000000, absavg = 0.000000
 The average distance is below 0.8 meaning that most particles are not interacting
-n = 4000, simulation time = 0.39964 seconds, absmin = 1.000000, absavg = 0.000000
+n = 4000, simulation time = 0.42102 seconds, absmin = 1.000000, absavg = 0.000000
 The average distance is below 0.8 meaning that most particles are not interacting
-n = 8000, simulation time = 0.923652 seconds, absmin = 1.000000, absavg = 0.000000
+n = 8000, simulation time = 1.00025 seconds, absmin = 1.000000, absavg = 0.000000
 The average distance is below 0.8 meaning that most particles are not interacting
