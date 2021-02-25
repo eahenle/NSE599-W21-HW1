@@ -2,8 +2,8 @@
 # module load cuda
 #
 CC = nvcc
-CFLAGS = -O3 -arch=compute_37 -code=sm_37
-NVCCFLAGS = -O3 -arch=compute_37 -code=sm_37
+CFLAGS = -O3 -arch=compute_70 -code=sm_70
+NVCCFLAGS = -O3 -arch=compute_70 -code=sm_70
 LIBS = 
 
 TARGETS = serial gpu autograder
