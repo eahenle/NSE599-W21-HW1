@@ -6,9 +6,6 @@
 
 #define NUM_THREADS 256
 
-/// change NUM_PARTICLE_BIN to dynamic?
-#define NUM_PARTICLE_BIN 16
-
 /// make into inline function?
 #define get_bin(p, bins_num, s) (int)(p.x/(double)(s/bins_num))+(int)(p.y/(double)(s/bins_num))*bins_num
 
@@ -26,8 +23,8 @@ class Bin
         // particle index array
         int particles[];
         // particle index buffers
-        int particles_tPlusOne[NUM_PARTICLE_BIN];
-        int outgoing_particles[NUM_PARTICLE_BIN];
+        int particles_tPlusOne[16];
+        int outgoing_particles[16];
 
         Bin(){
             this->nb_particles_tPlusOne = this->nb_particles_to_remove = this->nb_particles = 0;
@@ -135,6 +132,7 @@ __global__ void compute_forces_gpu(particle_t *particles, Bin *device_bins, int 
 }
 
 // update particle positions
+/// annotate and minimalize
 __global__ void move_gpu(particle_t *particles, Bin *device_bins, double d_size, int d_nb_bins_per_row, int d_nb_bins)
 {
     // Get thread (bin) ID
@@ -161,6 +159,7 @@ __global__ void move_gpu(particle_t *particles, Bin *device_bins, double d_size,
 }
 
 //allocate the particle after moved, each particle is in new position. Assign the bins again for the particles.
+/// annotate and minimalize
 __global__ void binning(particle_t *particles, Bin *device_bins, double d_size, int d_nb_bins_per_row, int d_nb_bins)
 {
     // Get thread bin ID
@@ -202,6 +201,7 @@ __global__ void binning(particle_t *particles, Bin *device_bins, double d_size, 
     }
 }
 
+/// implement smarter interaction checking? "border zone"
 int main(int argc, char **argv)
 {
     cudaDeviceSynchronize();
@@ -253,23 +253,23 @@ int main(int argc, char **argv)
     cudaDeviceSynchronize();
     copy_time = read_timer() - copy_time;
 
+    // GPU thread-blocks
+    const int nb_blocks = (nb_bins + NUM_THREADS - 1) / NUM_THREADS;
+
     double simulation_time = read_timer();
     for(int step = 0; step < NSTEPS; step++)
     {
-        //  compute forces
-        int blks = (nb_bins + NUM_THREADS - 1) / NUM_THREADS;
-        compute_forces_gpu <<< blks, NUM_THREADS >>> (device_particles, device_bins, nb_bins, nb_bins_per_row);
+        // calculate accelerations
+        compute_forces_gpu <<< nb_blocks, NUM_THREADS >>> (device_particles, device_bins, nb_bins, nb_bins_per_row);
 
-        //  move particles
-        move_gpu <<< blks, NUM_THREADS >>> (device_particles, device_bins, size, nb_bins_per_row, nb_bins);
+        // update positions
+        move_gpu <<< nb_blocks, NUM_THREADS >>> (device_particles, device_bins, size, nb_bins_per_row, nb_bins);
 
-        //  recalulate the particle in bins
-        binning <<< blks, NUM_THREADS >>> (device_particles, device_bins, size, nb_bins_per_row, nb_bins);
+        // re-bin
+        binning <<< nb_blocks, NUM_THREADS >>> (device_particles, device_bins, size, nb_bins_per_row, nb_bins);
 
-        //  save if necessary
         if(fsave && (step % SAVEFREQ) == 0)
         {
-            // Copy the particles back to the CPU
             cudaMemcpy(particles, device_particles, n * sizeof(particle_t), cudaMemcpyDeviceToHost);
             cudaDeviceSynchronize();
             save(fsave, n, particles);
