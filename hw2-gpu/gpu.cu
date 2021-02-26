@@ -5,13 +5,17 @@
 #include "common.h"
 
 #define NUM_THREADS 256
+
 /// change NUM_PARTICLE_BIN to dynamic?
 #define NUM_PARTICLE_BIN 16
+
 /// make into inline function?
 #define get_bin(p, bins_num, s) (int)(p.x/(double)(s/bins_num))+(int)(p.y/(double)(s/bins_num))*bins_num
 
 extern double size;
 
+// spatial bin for particles
+/// minimalize and annotate
 class Bin
 {
     public:
@@ -55,6 +59,7 @@ class Bin
         }
 };
 
+/// write into compute_forces_gpu
 __device__ void apply_force_gpu(particle_t &particle, particle_t &neighbor)
 {
     double dx = neighbor.x - particle.x;
@@ -89,6 +94,8 @@ __device__ void move_particle_gpu(particle_t &p, double d_size)
     }
 }
 
+// calculate particle accelerations
+/// annotate and minimalize
 __global__ void compute_forces_gpu(particle_t *particles, Bin *device_bins, int d_nb_bins, int d_nb_bins_per_row)
 {
     // Get thread (bin) ID
@@ -119,6 +126,7 @@ __global__ void compute_forces_gpu(particle_t *particles, Bin *device_bins, int 
                 for(int p2 = 0; p2 < device_bins[nei_bin].nb_particles; ++p2)
                 {
                     //compute force between cur bin and neighbor bin
+                    /// inline (subsume apply_force_gpu)
                     apply_force_gpu(particles[device_bins[cur_bin].particles[p1]], particles[device_bins[nei_bin].particles[p2]]);
                 }
             }
@@ -126,7 +134,7 @@ __global__ void compute_forces_gpu(particle_t *particles, Bin *device_bins, int 
     }
 }
 
-//move the particles according to their force
+// update particle positions
 __global__ void move_gpu(particle_t *particles, Bin *device_bins, double d_size, int d_nb_bins_per_row, int d_nb_bins)
 {
     // Get thread (bin) ID
@@ -196,7 +204,8 @@ __global__ void binning(particle_t *particles, Bin *device_bins, double d_size, 
 
 int main(int argc, char **argv)
 {
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
+
     if(find_option(argc, argv, "-h") >= 0)
     {
         printf("Options:\n");
@@ -219,7 +228,7 @@ int main(int argc, char **argv)
     // GPU device memory particle array allocation
     particle_t *device_particles;
     cudaMalloc((void**)&device_particles, n * sizeof(particle_t));
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
 
     // bins is an array of Bin objects (global memory allocation)
     const int nb_bins_per_row = ceil(sqrt(density * n) / cutoff);
@@ -229,6 +238,7 @@ int main(int argc, char **argv)
     // GPU device memory bin allocation
     Bin *device_bins;
     cudaMalloc((void**)&device_bins, nb_bins * sizeof(Bin));
+    cudaDeviceSynchronize();
 
     // assign initial particle bins in global memory
     for(int i = 0; i < n; ++i)
@@ -236,20 +246,14 @@ int main(int argc, char **argv)
         bins[get_bin(particles[i], nb_bins_per_row, size)].add(i);
     }
 
-    cudaThreadSynchronize();
-    double copy_time = read_timer();
-
     // copy bins and particles to GPU device memory
+    double copy_time = read_timer();
     cudaMemcpy(device_bins, bins, nb_bins * sizeof(Bin), cudaMemcpyHostToDevice);
     cudaMemcpy(device_particles, particles, n * sizeof(particle_t), cudaMemcpyHostToDevice);
-
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
     copy_time = read_timer() - copy_time;
 
-    //  simulate a number of time steps
-    cudaThreadSynchronize();
     double simulation_time = read_timer();
-
     for(int step = 0; step < NSTEPS; step++)
     {
         //  compute forces
@@ -271,7 +275,7 @@ int main(int argc, char **argv)
         }
     }
 
-    cudaThreadSynchronize();
+    cudaDeviceSynchronize();
     simulation_time = read_timer() - simulation_time;
 
     printf("CPU-GPU copy time = %g seconds\n", copy_time);
