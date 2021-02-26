@@ -271,19 +271,14 @@ int main(int argc, char **argv)
         {
             // Copy the particles back to the CPU
             cudaMemcpy(particles, device_particles, n * sizeof(particle_t), cudaMemcpyDeviceToHost);
+            cudaDeviceSynchronize();
             save(fsave, n, particles);
         }
     }
 
-    cudaDeviceSynchronize();
     simulation_time = read_timer() - simulation_time;
-
     printf("CPU-GPU copy time = %g seconds\n", copy_time);
     printf("n = %d, simulation time = %g seconds\n", n, simulation_time);
-
-    free(particles);
-    cudaFree(device_particles);
-    cudaFree(device_bins);
     if(fsave)
     {
         fclose(fsave);
