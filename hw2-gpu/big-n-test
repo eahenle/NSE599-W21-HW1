@@ -1,0 +1,15 @@
+#!/bin/bash
+
+make clean
+make || exit 1
+
+./gpu -n 64000 -o gpu.txt
+./autocorrect -s gpu.txt
+./gpu -n 96000 -o gpu.txt
+./autocorrect -s gpu.txt
+./gpu -n 128000 -o gpu.txt
+./autocorrect -s gpu.txt
+./gpu -n 192000 -o gpu.txt
+./autocorrect -s gpu.txt
+./gpu -n 256000 -o gpu.txt
+./autocorrect -s gpu.txt

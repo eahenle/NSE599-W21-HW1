@@ -6,13 +6,16 @@
 
 #define NUM_THREADS 256
 
-/// make into inline function?
+// get the bin ID for a particle
 #define get_bin(p, bins_num, s) (int)(p.x/(double)(s/bins_num))+(int)(p.y/(double)(s/bins_num))*bins_num
+// get the x-indices of a bin block
+#define get_x(row) {row - 1, row - 1, row - 1, row, row, row, row + 1, row + 1, row + 1}
+// get the y-indices of a bin block
+#define get_y(col) {col - 1, col, col + 1, col - 1, col, col + 1, col - 1, col, col + 1}
 
 extern double size;
 
 // spatial bin for particles
-/// minimalize and annotate
 class Bin
 {
     public:
@@ -26,53 +29,68 @@ class Bin
         int particles_tPlusOne[16];
         int outgoing_particles[16];
 
-        Bin(){
-            this->nb_particles_tPlusOne = this->nb_particles_to_remove = this->nb_particles = 0;
+        // constructor
+        Bin()
+        {
+            this->nb_particles_tPlusOne = 0;
+            this->nb_particles_to_remove = 0;
+            this->nb_particles = 0;
         }
 
-        //add new particle to the bin
-        __host__ __device__ void add(int par_id){
-            this->particles[this->nb_particles] = par_id;
+        // add a particle by index
+        __host__ __device__ void add(int p_id)
+        {
+            this->particles[this->nb_particles] = p_id;
             this->nb_particles++;
         }
 
-        //record the particle state in new step
-        __host__ __device__ void update(int new_bin, int cur_bin, int p_id){
-            if (new_bin != cur_bin) {
+        // record the particle state in new step
+        __host__ __device__ void update(int new_bin, int current_bin, int p_id)
+        {
+            if (new_bin != current_bin)
+            {
                 this->outgoing_particles[this->nb_particles_to_remove++] = p_id;
-            } else {
+            }
+            else
+            {
                 this->particles_tPlusOne[this->nb_particles_tPlusOne++] = p_id;
             }
         }
 
-        //zero the counters
-        __host__ __device__ void clear_counter(){
-            this->nb_particles_tPlusOne = this->nb_particles_to_remove = 0;
+        // reset the counters
+        __host__ __device__ void reset_counters()
+        {
+            this->nb_particles_tPlusOne = 0;
+            this->nb_particles_to_remove = 0;
         }
 
-        //exchange the particle from previous step to current step
-        __host__ __device__ void exchange(int p_id){
+        // exchange the particle from previous step to current step
+        __host__ __device__ void exchange(int p_id)
+        {
             this->particles[p_id] = this->particles_tPlusOne[p_id];
         }
 };
 
-/// write into compute_forces_gpu
+
+// device-side acceleration calculation
 __device__ void apply_force_gpu(particle_t &particle, particle_t &neighbor)
 {
     double dx = neighbor.x - particle.x;
     double dy = neighbor.y - particle.y;
     double r2 = dx * dx + dy * dy;
-    if(r2 > cutoff*cutoff)
+    if(r2 > cutoff * cutoff)
     {
         return;
     }
-    r2 = (r2 > min_r*min_r) ? r2 : min_r*min_r;
+    r2 = (r2 > min_r * min_r) ? r2 : min_r * min_r;
     double r = sqrt(r2);
     double coef = (1 - cutoff / r) / r2 / mass;
     particle.ax += coef * dx;
     particle.ay += coef * dy;
 }
 
+
+// device-side position update
 __device__ void move_particle_gpu(particle_t &p, double d_size)
 {
     p.vx += p.ax * dt;
@@ -91,117 +109,111 @@ __device__ void move_particle_gpu(particle_t &p, double d_size)
     }
 }
 
-// calculate particle accelerations
-/// annotate and minimalize
-__global__ void compute_forces_gpu(particle_t *particles, Bin *device_bins, int d_nb_bins, int d_nb_bins_per_row)
+
+// loop over bins in blocks to calculate forces
+__global__ void bin_block_forces(particle_t *particles, Bin *device_bins, int d_nb_bins, int d_nb_bins_per_row)
 {
-    // Get thread (bin) ID
-    int cur_bin = threadIdx.x + blockIdx.x * blockDim.x;
-    if(cur_bin >= d_nb_bins)
+    // get bin ID
+    int current_bin = threadIdx.x + blockIdx.x * blockDim.x;
+    if(current_bin >= d_nb_bins)
     {
         return;
     }
 
-    int b1_row = cur_bin % d_nb_bins_per_row;
-    int b1_col = cur_bin / d_nb_bins_per_row;
+    int b1_row = current_bin % d_nb_bins_per_row;
+    int b1_col = current_bin / d_nb_bins_per_row;
 
-    for(int p1 = 0; p1 < device_bins[cur_bin].nb_particles; ++p1)
+    for(int p1 = 0; p1 < device_bins[current_bin].nb_particles; ++p1)
     {
-        particles[device_bins[cur_bin].particles[p1]].ax = particles[device_bins[cur_bin].particles[p1]].ay = 0;
+        particles[device_bins[current_bin].particles[p1]].ax = particles[device_bins[current_bin].particles[p1]].ay = 0;
     }
 
-    //nine bins, left to right, top do down
-    int x_idx[] = {b1_row-1, b1_row-1, b1_row-1, b1_row,   b1_row, b1_row,   b1_row+1, b1_row+1, b1_row+1};
-    int y_idx[] = {b1_col-1, b1_col,   b1_col+1, b1_col-1, b1_col, b1_col+1, b1_col-1,  b1_col,  b1_col+1};
+    int x_idx[] = get_x(b1_row);
+    int y_idx[] = get_y(b1_col);
     for(int i = 0; i < 9; ++i)
     {
         if(x_idx[i] >= 0 && x_idx[i] < d_nb_bins_per_row && y_idx[i] >= 0 && y_idx[i] < d_nb_bins_per_row)
         {
-            int nei_bin = x_idx[i] + y_idx[i] * d_nb_bins_per_row; //get the neighbor bin
-            for(int p1 = 0; p1 < device_bins[cur_bin].nb_particles; ++p1)
+            int neighbor = x_idx[i] + y_idx[i] * d_nb_bins_per_row;
+            for(int p1 = 0; p1 < device_bins[current_bin].nb_particles; ++p1)
             {
-                for(int p2 = 0; p2 < device_bins[nei_bin].nb_particles; ++p2)
+                for(int p2 = 0; p2 < device_bins[neighbor].nb_particles; ++p2)
                 {
-                    //compute force between cur bin and neighbor bin
-                    /// inline (subsume apply_force_gpu)
-                    apply_force_gpu(particles[device_bins[cur_bin].particles[p1]], particles[device_bins[nei_bin].particles[p2]]);
+                    // compute force between particles of current/neighbor bins
+                    apply_force_gpu(particles[device_bins[current_bin].particles[p1]], particles[device_bins[neighbor].particles[p2]]);
                 }
             }
         }
     }
 }
 
+
 // update particle positions
-/// annotate and minimalize
 __global__ void move_gpu(particle_t *particles, Bin *device_bins, double d_size, int d_nb_bins_per_row, int d_nb_bins)
 {
-    // Get thread (bin) ID
-    int cur_bin = threadIdx.x + blockIdx.x * blockDim.x;
-    if(cur_bin >= d_nb_bins)
+    // Get bin ID
+    int current_bin = threadIdx.x + blockIdx.x * blockDim.x;
+    if(current_bin >= d_nb_bins)
     {
         return;
     }
 
-    // initialize the exchange counter
-    device_bins[cur_bin].clear_counter();
+    device_bins[current_bin].reset_counters();
 
-    // Move this bin's particles to either leaving or staying
-    for(int p1 = 0; p1 < device_bins[cur_bin].nb_particles; ++p1)
+    // assign particles as leaving or staying
+    for(int p1 = 0; p1 < device_bins[current_bin].nb_particles; ++p1)
     {
-        //move the particle to new bin
-        int p_new = device_bins[cur_bin].particles[p1];
+        int p_new = device_bins[current_bin].particles[p1];
         particle_t &p = particles[p_new];
         move_particle_gpu(p, d_size);
-        // record the state of the partivle
-        int new_b_idx = get_bin(p, d_nb_bins_per_row, d_size);
-        device_bins[cur_bin].update(new_b_idx, cur_bin, p_new); // check whether the partivle move to a new bin
+        device_bins[current_bin].update(
+            get_bin(p, d_nb_bins_per_row, d_size), current_bin, p_new);
     }
 }
 
-//allocate the particle after moved, each particle is in new position. Assign the bins again for the particles.
-/// annotate and minimalize
+
+// bin/re-bin particles
 __global__ void binning(particle_t *particles, Bin *device_bins, double d_size, int d_nb_bins_per_row, int d_nb_bins)
 {
     // Get thread bin ID
-    int cur_bin = threadIdx.x + blockIdx.x * blockDim.x;
-    if(cur_bin >= d_nb_bins)
+    int current_bin = threadIdx.x + blockIdx.x * blockDim.x;
+    if(current_bin >= d_nb_bins)
     {
         return;
     }
 
     // Saves the particle that stays in the bin
-    device_bins[cur_bin].nb_particles = device_bins[cur_bin].nb_particles_tPlusOne;
-    for(int p1 = 0; p1 < device_bins[cur_bin].nb_particles; ++p1)
+    device_bins[current_bin].nb_particles = device_bins[current_bin].nb_particles_tPlusOne;
+    for(int p1 = 0; p1 < device_bins[current_bin].nb_particles; ++p1)
     {
-        device_bins[cur_bin].exchange(p1);
+        device_bins[current_bin].exchange(p1);
     }
 
     // accept the incoming particle to the bin
-    int cur_b_row = cur_bin % d_nb_bins_per_row;
-    int cur_b_col = cur_bin / d_nb_bins_per_row;
-    int x_idx[] = {cur_b_row-1, cur_b_row-1, cur_b_row-1, cur_b_row,   cur_b_row, cur_b_row,   cur_b_row+1, cur_b_row+1, cur_b_row+1};
-    int y_idx[] = {cur_b_col-1, cur_b_col,   cur_b_col+1, cur_b_col-1, cur_b_col, cur_b_col+1, cur_b_col-1,  cur_b_col,  cur_b_col+1};
+    int b_row = current_bin % d_nb_bins_per_row;
+    int b_col = current_bin / d_nb_bins_per_row;
+    int x_idx[] = get_x(b_row);
+    int y_idx[] = get_y(b_col);
 
     for(int i = 0; i < 9; ++i)
     {
-      //check out of border
         if(x_idx[i] >= 0 && x_idx[i] < d_nb_bins_per_row && y_idx[i] >= 0 && y_idx[i] < d_nb_bins_per_row)
         {
             int b2 = x_idx[i] + y_idx[i] * d_nb_bins_per_row;
             for(int p2 = 0; p2 < device_bins[b2].nb_particles_to_remove; ++p2)
             {
-                int par_comming = device_bins[b2].outgoing_particles[p2];
-                particle_t &p = particles[par_comming];
-                if(get_bin(p, d_nb_bins_per_row, d_size) == cur_bin)
-                {//find the particle from the neighbor that arrives in the cur bin
-                    device_bins[cur_bin].add(par_comming);
+                int incoming_particle = device_bins[b2].outgoing_particles[p2];
+                particle_t &p = particles[incoming_particle];
+                if(get_bin(p, d_nb_bins_per_row, d_size) == current_bin)
+                {
+                    device_bins[current_bin].add(incoming_particle);
                 }
             }
         }
     }
 }
 
-/// implement smarter interaction checking? "border zone"
+
 int main(int argc, char **argv)
 {
     cudaDeviceSynchronize();
@@ -260,7 +272,7 @@ int main(int argc, char **argv)
     for(int step = 0; step < NSTEPS; step++)
     {
         // calculate accelerations
-        compute_forces_gpu <<< nb_blocks, NUM_THREADS >>> (device_particles, device_bins, nb_bins, nb_bins_per_row);
+        bin_block_forces <<< nb_blocks, NUM_THREADS >>> (device_particles, device_bins, nb_bins, nb_bins_per_row);
 
         // update positions
         move_gpu <<< nb_blocks, NUM_THREADS >>> (device_particles, device_bins, size, nb_bins_per_row, nb_bins);
